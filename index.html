@@ -6,12 +6,19 @@
 <title>RECETTE APP</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230d0b09'/%3E%3Ccircle cx='16' cy='17' r='8' fill='none' stroke='%23ff9557' stroke-width='1.6'/%3E%3Cpath d='M6 11h20' stroke='%23ff9557' stroke-width='1.6' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='17' r='2.6' fill='%23ff9557'/%3E%3C/svg%3E">
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="theme-color" content="#ff9557">
+<meta name="theme-color" content="#161a1f">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Recette">
 <link rel="apple-touch-icon" href="icon-192.png">
+<script>
+/* Posé ici, avant la feuille de style : sinon la page s'affiche une fraction
+   de seconde dans le thème par défaut avant de basculer, et ce clignotement se
+   voit à chaque lancement. */
+try{ var t=localStorage.getItem('recette_theme');
+     if(t)document.documentElement.setAttribute('data-theme',JSON.parse(t)); }catch(e){}
+</script>
 <style>
 /* ── Les polices sont chez nous ───────────────────────────────────────────
    Même règle que sur le kanban : aucun appel sortant. Deux familles suffisent
@@ -37,18 +44,86 @@
 :root{
   --sys-sans:system-ui,-apple-system,'Segoe UI',sans-serif;
   --sys-mono:ui-monospace,SFMono-Regular,Menlo,monospace;
-  --bg:#0d0b09;--surface:#151210;--surface2:#1c1815;--surface3:#241f1b;
-  --border:#2c2622;--border2:#453b34;
-  --accent:#ff9557;--accent-dim:rgba(255,149,87,0.12);
-  --text:#f0e9e4;--text-mid:#b8a99e;--text-dim:#7a6b61;
-  --green:#7bd88f;--warn:#fbbf24;--danger:#f87171;
   --font-body:'Syne',var(--sys-sans);
   --font-mono:'Space Mono',var(--sys-mono);
   /* Un rayon = une couleur. Elle sert au liseré des sections et aux pastilles :
-     en course, on reconnaît un rayon à sa couleur avant de lire son nom. */
-  --r-legumes:#7bd88f;--r-frais:#60c8f0;--r-viande:#f87171;--r-epicerie:#fcd34d;
-  --r-surgele:#93c5fd;--r-boisson:#c084fc;--r-entretien:#94a3b8;--r-autre:#a8a29e;
+     en course, on reconnaît un rayon à sa couleur avant de lire son nom.
+     Ces teintes ont été adoucies : les couleurs vives d'origine, posées sur un
+     fond presque noir, piquaient les yeux à chaque coup d'œil sur la liste. */
+  --r-legumes:#8fbf9f;--r-frais:#86b8cf;--r-viande:#d99494;--r-epicerie:#d8bd85;
+  --r-surgele:#9db8dd;--r-boisson:#b69bd1;--r-entretien:#9aa5ad;--r-autre:#a8a29e;
+  --green:#8fbf9f;--warn:#d8bd85;--danger:#d99494;
 }
+
+/* ── Les thèmes ────────────────────────────────────────────────────────────
+   Dix palettes sombres, toutes construites pareil : un fond très peu saturé,
+   trois surfaces qui montent doucement, deux bordures, et un accent tempéré.
+   Aucun blanc pur sur aucun noir pur — c'est ce contraste-là qui fatigue.
+   `--sur-accent` est la couleur de ce qui s'écrit SUR l'accent : elle suit la
+   teinte du fond, sinon les boutons pleins ressortent comme des trous.
+   Le thème est posé sur <html data-theme>, donc changer de thème ne
+   reconstruit rien : le navigateur recalcule les variables, c'est tout. */
+:root,[data-theme="ardoise"]{
+  --bg:#161a1f;--surface:#1c2128;--surface2:#222831;--surface3:#2a313b;
+  --border:#2b323b;--border2:#3a434f;
+  --accent:#8ab4c8;--accent-dim:rgba(138,180,200,0.14);--sur-accent:#12171c;
+  --text:#dde3e9;--text-mid:#9aa6b2;--text-dim:#6b7684;
+}
+[data-theme="brume"]{
+  --bg:#1a1a1c;--surface:#212123;--surface2:#27272a;--surface3:#2e2e32;
+  --border:#323236;--border2:#43434a;
+  --accent:#c9b79c;--accent-dim:rgba(201,183,156,0.14);--sur-accent:#18171a;
+  --text:#e2e0dc;--text-mid:#a5a29c;--text-dim:#75726c;
+}
+[data-theme="foret"]{
+  --bg:#151a17;--surface:#1b211d;--surface2:#212823;--surface3:#28302a;
+  --border:#2c352f;--border2:#3b4740;
+  --accent:#8fbf9f;--accent-dim:rgba(143,191,159,0.14);--sur-accent:#111814;
+  --text:#dde4de;--text-mid:#9aa89f;--text-dim:#6b786f;
+}
+[data-theme="prune"]{
+  --bg:#1a1620;--surface:#211c28;--surface2:#27222f;--surface3:#2f2938;
+  --border:#332c3d;--border2:#443a50;
+  --accent:#b49ad4;--accent-dim:rgba(180,154,212,0.14);--sur-accent:#16121c;
+  --text:#e2dce8;--text-mid:#a498b0;--text-dim:#756a80;
+}
+[data-theme="ocean"]{
+  --bg:#131b21;--surface:#192228;--surface2:#1f2930;--surface3:#26313a;
+  --border:#2a353d;--border2:#384751;
+  --accent:#7fbcd0;--accent-dim:rgba(127,188,208,0.14);--sur-accent:#0f181e;
+  --text:#dce5ea;--text-mid:#93a4ad;--text-dim:#67767f;
+}
+[data-theme="argile"]{
+  --bg:#1c1917;--surface:#23201d;--surface2:#2a2624;--surface3:#322d2a;
+  --border:#35302c;--border2:#48413c;
+  --accent:#d79f80;--accent-dim:rgba(215,159,128,0.14);--sur-accent:#1a1513;
+  --text:#e7e0da;--text-mid:#aca29a;--text-dim:#7b716a;
+}
+[data-theme="sable"]{
+  --bg:#1b1916;--surface:#22201c;--surface2:#292621;--surface3:#312d27;
+  --border:#35312a;--border2:#47423a;
+  --accent:#d4bd8e;--accent-dim:rgba(212,189,142,0.14);--sur-accent:#191612;
+  --text:#e8e3da;--text-mid:#aaa296;--text-dim:#786f64;
+}
+[data-theme="nuit"]{
+  --bg:#16181f;--surface:#1c1f27;--surface2:#22262f;--surface3:#2a2f39;
+  --border:#2e323d;--border2:#3d4351;
+  --accent:#9aa8e0;--accent-dim:rgba(154,168,224,0.14);--sur-accent:#13151c;
+  --text:#dfe1ea;--text-mid:#9ba0b2;--text-dim:#6c7183;
+}
+[data-theme="bois-de-rose"]{
+  --bg:#1c1719;--surface:#231d20;--surface2:#2a2326;--surface3:#322a2d;
+  --border:#362e31;--border2:#493e42;
+  --accent:#d49aa6;--accent-dim:rgba(212,154,166,0.14);--sur-accent:#1a1416;
+  --text:#e9e0e2;--text-mid:#ada0a3;--text-dim:#7b6e71;
+}
+[data-theme="charbon"]{
+  --bg:#17181a;--surface:#1d1e21;--surface2:#232427;--surface3:#2a2b2f;
+  --border:#2e3034;--border2:#3e4045;
+  --accent:#aeb7bf;--accent-dim:rgba(174,183,191,0.14);--sur-accent:#151618;
+  --text:#dfe2e5;--text-mid:#9ba1a8;--text-dim:#6d737a;
+}
+
 *{box-sizing:border-box;margin:0;padding:0}
 .sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -60,20 +135,20 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);display
 body::after{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");pointer-events:none;z-index:9999}
 
 /* ── HEADER ─────────────────────────────────────────────────────────────── */
-header{flex-shrink:0;height:56px;background:var(--bg);border-bottom:1px solid var(--border);
+header{flex-shrink:0;height:60px;background:var(--bg);border-bottom:1px solid var(--border);
        display:flex;align-items:center;padding:0 0.9rem;gap:0.6rem;z-index:200;position:relative;
        padding-top:env(safe-area-inset-top)}
-.logo{font-family:var(--font-mono);font-size:0.64rem;font-weight:700;letter-spacing:0.28em;color:var(--accent);white-space:nowrap}
+.logo{font-family:var(--font-mono);font-size:0.72rem;font-weight:700;letter-spacing:0.28em;color:var(--accent);white-space:nowrap}
 .nav-sep{width:1px;height:22px;background:var(--border);flex-shrink:0}
 .nav-tabs{display:flex;gap:0.1rem}
-.nav-tab{background:none;border:none;font-family:var(--font-mono);font-size:0.58rem;letter-spacing:0.15em;
+.nav-tab{background:none;border:none;font-family:var(--font-mono);font-size:0.68rem;letter-spacing:0.15em;
          text-transform:uppercase;color:var(--text-dim);cursor:pointer;padding:0.3rem 0.65rem;
          border-bottom:2px solid transparent;transition:color 0.13s,border-color 0.13s;white-space:nowrap}
 .nav-tab:hover{color:var(--text-mid)}
 .nav-tab.active{color:var(--accent);border-color:var(--accent)}
 .hspace{flex:1}
 .hbtn{background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--font-mono);
-      font-size:0.56rem;letter-spacing:0.1em;padding:0.3rem 0.55rem;border-radius:4px;cursor:pointer}
+      font-size:0.64rem;letter-spacing:0.1em;padding:0.3rem 0.55rem;border-radius:4px;cursor:pointer}
 .hbtn:hover{color:var(--text);border-color:var(--border2)}
 
 main{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:0.9rem 0.9rem calc(2.5rem + env(safe-area-inset-bottom));
@@ -98,22 +173,22 @@ main{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:0.9rem 0.9rem ca
 
 /* ── Pièces communes ────────────────────────────────────────────────────── */
 .bloc{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:0.8rem;margin-bottom:0.8rem}
-.bloc-titre{font-family:var(--font-mono);font-size:0.55rem;letter-spacing:0.18em;text-transform:uppercase;
+.bloc-titre{font-family:var(--font-mono);font-size:0.64rem;letter-spacing:0.16em;text-transform:uppercase;
             color:var(--text-dim);margin-bottom:0.6rem;display:flex;align-items:center;gap:0.4rem 0.5rem;flex-wrap:wrap}
 .bloc-titre .cpt{color:var(--accent);white-space:nowrap}
 .bloc-titre .fin{margin-left:auto;display:flex;gap:0.35rem}
 input,select,textarea{background:var(--surface2);border:1px solid var(--border);color:var(--text);
-      font-family:var(--font-body);font-size:0.92rem;padding:0.55rem 0.7rem;border-radius:7px;width:100%}
+      font-family:var(--font-body);font-size:1.02rem;padding:0.62rem 0.75rem;border-radius:7px;width:100%}
 input::placeholder,textarea::placeholder{color:var(--text-dim)}
 textarea{resize:vertical;line-height:1.5}
 select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 4.5 6 8.5 10 4.5' fill='none' stroke='%237a6b61' stroke-width='1.4'/%3E%3C/svg%3E");
        background-repeat:no-repeat;background-position:right 0.5rem center;background-size:12px;padding-right:1.8rem}
-.btn{font-family:var(--font-mono);font-size:0.6rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;
+.btn{font-family:var(--font-mono);font-size:0.68rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;
      background:var(--surface2);border:1px solid var(--border);color:var(--text-mid);padding:0.5rem 0.8rem;
      border-radius:7px;cursor:pointer;transition:all 0.13s;white-space:nowrap}
 .btn:hover{color:var(--text);border-color:var(--border2)}
-.btn.primaire{background:var(--accent);border-color:var(--accent);color:#1a0f07}
-.btn.primaire:hover{filter:brightness(1.08);color:#1a0f07}
+.btn.primaire{background:var(--accent);border-color:var(--accent);color:var(--sur-accent)}
+.btn.primaire:hover{filter:brightness(1.08);color:var(--sur-accent)}
 .btn.danger:hover{color:var(--danger);border-color:var(--danger)}
 .btn:disabled{opacity:0.4;cursor:not-allowed}
 /* Un bouton d'une seule glyphe reste carré, quelle que soit la glyphe. */
@@ -123,7 +198,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 .eclair{display:flex;gap:0.45rem;margin-bottom:0.6rem}
 .eclair input{flex:1;min-width:0}
 .eclair[hidden]{display:none}
-.vide{color:var(--text-dim);font-size:0.85rem;text-align:center;padding:1.4rem 0.5rem;line-height:1.6}
+.vide{color:var(--text-dim);font-size:0.97rem;text-align:center;padding:1.4rem 0.5rem;line-height:1.6}
 
 /* ── Courses : ajout ────────────────────────────────────────────────────── */
 .ajout{display:flex;gap:0.45rem}
@@ -153,8 +228,8 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
    et le délai se lit en bout de ligne, toujours au même endroit. */
 .grp .puce{width:100%;justify-content:flex-start;border-radius:7px;margin-bottom:0.2rem;text-align:left}
 .grp .puce .jrs{margin-left:auto;padding-left:0.3rem}
-.puce{display:inline-flex;align-items:center;gap:0.35rem;background:var(--surface2);border:1px solid var(--border);
-      color:var(--text-mid);font-size:0.8rem;padding:0.32rem 0.6rem;border-radius:99px;cursor:pointer;
+.puce{display:inline-flex;align-items:center;gap:0.4rem;background:var(--surface2);border:1px solid var(--border);
+      color:var(--text-mid);font-size:0.95rem;padding:0.42rem 0.65rem;border-radius:99px;cursor:pointer;
       transition:all 0.13s;font-family:var(--font-body)}
 .puce:hover{border-color:var(--accent);color:var(--text)}
 .puce .pt{width:6px;height:6px;border-radius:50%;background:var(--rc,var(--text-dim));flex-shrink:0}
@@ -163,46 +238,46 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 .grp .puce .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .puce.due{border-color:var(--accent-dim);background:var(--accent-dim);color:var(--text)}
 .puce.dedans{opacity:0.38;text-decoration:line-through}
-.puce .jrs{font-family:var(--font-mono);font-size:0.52rem;color:var(--text-dim);letter-spacing:0.06em}
+.puce .jrs{font-family:var(--font-mono);font-size:0.6rem;color:var(--text-dim);letter-spacing:0.06em}
 
 /* ── Courses : la liste ─────────────────────────────────────────────────── */
 .rayon{margin-bottom:0.7rem}
-.rayon-tit{font-family:var(--font-mono);font-size:0.52rem;letter-spacing:0.16em;text-transform:uppercase;
+.rayon-tit{font-family:var(--font-mono);font-size:0.64rem;letter-spacing:0.14em;text-transform:uppercase;
            color:var(--rc,var(--text-dim));padding:0 0 0.3rem 0.55rem;border-left:2px solid var(--rc,var(--border));
            margin-bottom:0.3rem;display:flex;gap:0.4rem;align-items:baseline}
-.item{display:flex;align-items:center;gap:0.6rem;background:var(--surface);border:1px solid var(--border);
-      border-radius:8px;padding:0.5rem 0.55rem;margin-bottom:0.3rem}
+.item{display:flex;align-items:center;gap:0.7rem;background:var(--surface);border:1px solid var(--border);
+      border-radius:9px;padding:0.68rem 0.6rem;margin-bottom:0.35rem}
 .item.coche{opacity:0.45}
-.case{width:22px;height:22px;flex-shrink:0;border:1.5px solid var(--border2);border-radius:6px;background:none;
+.case{width:27px;height:27px;flex-shrink:0;border:1.5px solid var(--border2);border-radius:7px;background:none;
       cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
-.case::after{content:'';width:11px;height:6px;border-left:2px solid #1a0f07;border-bottom:2px solid #1a0f07;
+.case::after{content:'';width:13px;height:7px;border-left:2.4px solid var(--sur-accent);border-bottom:2.4px solid var(--sur-accent);
              transform:rotate(-45deg) translate(1px,-2px);opacity:0}
 .item.coche .case{background:var(--accent);border-color:var(--accent)}
 .item.coche .case::after{opacity:1}
-.item-nom{flex:1;min-width:0;font-size:0.94rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+.item-nom{flex:1;min-width:0;font-size:1.08rem;line-height:1.35;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
           background:none;border:none;padding:0;color:var(--text);font-family:var(--font-body)}
 .item.coche .item-nom{text-decoration:line-through;color:var(--text-mid)}
-.item-src{font-family:var(--font-mono);font-size:0.48rem;letter-spacing:0.1em;color:var(--text-dim);
+.item-src{font-family:var(--font-mono);font-size:0.56rem;letter-spacing:0.1em;color:var(--text-dim);
           border:1px solid var(--border);border-radius:99px;padding:0.1rem 0.35rem;flex-shrink:0}
 .qte{display:flex;align-items:center;gap:0.15rem;flex-shrink:0}
-.qte button{width:24px;height:24px;background:var(--surface2);border:1px solid var(--border);color:var(--text-mid);
+.qte button{width:29px;height:29px;background:var(--surface2);border:1px solid var(--border);color:var(--text-mid);
             border-radius:6px;cursor:pointer;font-size:0.85rem;line-height:1;padding:0}
 .qte button:hover{color:var(--text);border-color:var(--border2)}
-.qte span{font-family:var(--font-mono);font-size:0.7rem;min-width:1.4rem;text-align:center;color:var(--text-mid)}
-.sup{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:1rem;line-height:1;
-     padding:0.2rem 0.3rem;flex-shrink:0}
+.qte span{font-family:var(--font-mono);font-size:0.82rem;min-width:1.6rem;text-align:center;color:var(--text-mid)}
+.sup{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:1.15rem;line-height:1;
+     padding:0.25rem 0.35rem;flex-shrink:0}
 .sup:hover{color:var(--danger)}
 
 /* ── Courses : l'historique ─────────────────────────────────────────────── */
 .histo-ligne{display:flex;align-items:center;gap:0.55rem;background:var(--surface);border:1px solid var(--border);
              border-radius:8px;padding:0.5rem 0.6rem;margin-bottom:0.3rem}
 .histo-txt{flex:1;min-width:0}
-.histo-date{display:block;font-size:0.88rem}
-.histo-meta{display:block;font-family:var(--font-mono);font-size:0.5rem;letter-spacing:0.1em;
+.histo-date{display:block;font-size:1.02rem}
+.histo-meta{display:block;font-family:var(--font-mono);font-size:0.58rem;letter-spacing:0.1em;
             text-transform:uppercase;color:var(--text-dim);margin-top:0.15rem}
 /* Le détail d'une course archivée, dans la modale : lisible, pas cliquable —
    ce qui est classé ne se recoche pas. */
-.arch-item{display:flex;align-items:center;gap:0.5rem;font-size:0.88rem;padding:0.16rem 0}
+.arch-item{display:flex;align-items:center;gap:0.5rem;font-size:1rem;padding:0.22rem 0}
 .arch-item .pt{width:6px;height:6px;border-radius:50%;background:var(--rc,var(--text-dim));flex-shrink:0}
 .arch-item.coche{color:var(--text-dim);text-decoration:line-through}
 .arch-item .q{font-family:var(--font-mono);font-size:0.6rem;color:var(--text-dim);margin-left:auto}
@@ -210,17 +285,17 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 /* ── Recettes : le tirage ───────────────────────────────────────────────── */
 .tirage{background:linear-gradient(160deg,var(--surface2),var(--surface));border:1px solid var(--border);
         border-radius:12px;padding:1rem;margin-bottom:0.8rem;text-align:center}
-.tirage-btn{font-family:var(--font-mono);font-size:0.78rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;
-            background:var(--accent);color:#1a0f07;border:none;border-radius:9px;padding:0.9rem 1.4rem;width:100%;
+.tirage-btn{font-family:var(--font-mono);font-size:0.86rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;
+            background:var(--accent);color:var(--sur-accent);border:none;border-radius:9px;padding:0.9rem 1.4rem;width:100%;
             cursor:pointer;transition:filter 0.13s}
 .tirage-btn:hover{filter:brightness(1.08)}
 .tirage-btn:disabled{filter:grayscale(0.5);cursor:wait}
 .tirage-sec{display:flex;gap:0.45rem;margin-top:0.55rem;justify-content:center;flex-wrap:wrap}
 .sortie{margin-top:0.85rem;padding-top:0.85rem;border-top:1px dashed var(--border2);display:none}
 .sortie.on{display:block}
-.sortie-nom{font-size:1.5rem;font-weight:800;line-height:1.25;letter-spacing:-0.01em}
+.sortie-nom{font-size:1.75rem;font-weight:800;line-height:1.25;letter-spacing:-0.01em}
 .sortie.roule .sortie-nom{color:var(--text-mid);filter:blur(0.4px)}
-.sortie-meta{font-family:var(--font-mono);font-size:0.55rem;letter-spacing:0.12em;color:var(--text-dim);
+.sortie-meta{font-family:var(--font-mono);font-size:0.62rem;letter-spacing:0.12em;color:var(--text-dim);
              margin-top:0.4rem;text-transform:uppercase}
 .sortie-act{display:flex;gap:0.4rem;margin-top:0.8rem;justify-content:center;flex-wrap:wrap}
 
@@ -228,32 +303,32 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 .menu-ligne,.propos-ligne{display:flex;align-items:center;gap:0.55rem;background:var(--surface);
             border:1px solid var(--border);border-radius:8px;padding:0.5rem 0.6rem;margin-bottom:0.3rem}
 .propos-txt{flex:1;min-width:0}
-.propos-nom{display:block;font-size:0.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.propos-meta{display:block;font-family:var(--font-mono);font-size:0.5rem;letter-spacing:0.1em;
+.propos-nom{display:block;font-size:1.05rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.propos-meta{display:block;font-family:var(--font-mono);font-size:0.58rem;letter-spacing:0.1em;
              text-transform:uppercase;color:var(--text-dim);margin-top:0.15rem}
 /* Une idée déjà versée dans la liste se voit d'un coup d'œil : on ne la
    propose plus d'ajouter, on dit qu'elle y est. */
 .propos-ligne.dedans{border-color:var(--accent-dim);background:var(--accent-dim)}
 .propos-ligne .fait{font-family:var(--font-mono);font-size:0.5rem;letter-spacing:0.1em;
                     text-transform:uppercase;color:var(--green);padding:0 0.3rem;white-space:nowrap}
-.menu-jour{font-family:var(--font-mono);font-size:0.52rem;letter-spacing:0.12em;color:var(--text-dim);
+.menu-jour{font-family:var(--font-mono);font-size:0.6rem;letter-spacing:0.12em;color:var(--text-dim);
            width:2.6rem;flex-shrink:0;text-transform:uppercase}
-.menu-nom{flex:1;min-width:0;font-size:0.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.menu-nom{flex:1;min-width:0;font-size:1.03rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* ── Recettes : la liste ────────────────────────────────────────────────── */
 .rec{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:0.6rem 0.7rem;margin-bottom:0.35rem}
 .rec-haut{display:flex;align-items:center;gap:0.5rem}
-.rec-nom{flex:1;min-width:0;font-size:0.95rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rec-nom{flex:1;min-width:0;font-size:1.08rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rec-bas{display:flex;align-items:center;gap:0.4rem;margin-top:0.35rem;flex-wrap:wrap}
-.tag{font-family:var(--font-mono);font-size:0.48rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-mid);
+.tag{font-family:var(--font-mono);font-size:0.56rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-mid);
      background:var(--surface3);border:1px solid var(--border);border-radius:99px;padding:0.12rem 0.4rem}
-.rec-stat{font-family:var(--font-mono);font-size:0.5rem;letter-spacing:0.08em;color:var(--text-dim);margin-left:auto}
+.rec-stat{font-family:var(--font-mono);font-size:0.58rem;letter-spacing:0.08em;color:var(--text-dim);margin-left:auto}
 .filtres{display:flex;flex-wrap:wrap;gap:0.3rem;margin-bottom:0.6rem}
-.filtre{font-family:var(--font-mono);font-size:0.54rem;letter-spacing:0.1em;text-transform:uppercase;
+.filtre{font-family:var(--font-mono);font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;
         background:none;border:1px solid var(--border);color:var(--text-dim);padding:0.28rem 0.6rem;
         border-radius:99px;cursor:pointer}
 .filtre:hover{color:var(--text-mid)}
-.filtre.on{background:var(--accent);border-color:var(--accent);color:#1a0f07;font-weight:700}
+.filtre.on{background:var(--accent);border-color:var(--accent);color:var(--sur-accent);font-weight:700}
 
 /* ── Modale ─────────────────────────────────────────────────────────────── */
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.72);display:none;align-items:center;justify-content:center;
@@ -261,21 +336,35 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 .modal-bg.open{display:flex}
 .modal{background:var(--surface);border:1px solid var(--border2);border-radius:12px;width:100%;max-width:520px;
        max-height:88vh;overflow-y:auto;padding:1rem}
-.modal h2{font-family:var(--font-mono);font-size:0.62rem;letter-spacing:0.18em;text-transform:uppercase;
+.modal h2{font-family:var(--font-mono);font-size:0.72rem;letter-spacing:0.18em;text-transform:uppercase;
           color:var(--accent);margin-bottom:0.8rem}
 .champ{margin-bottom:0.6rem}
-.champ label{display:block;font-family:var(--font-mono);font-size:0.5rem;letter-spacing:0.14em;text-transform:uppercase;
+.champ label{display:block;font-family:var(--font-mono);font-size:0.58rem;letter-spacing:0.14em;text-transform:uppercase;
              color:var(--text-dim);margin-bottom:0.25rem}
 .duo{display:flex;gap:0.5rem}
 .duo>*{flex:1}
 .modal-act{display:flex;gap:0.4rem;justify-content:flex-end;margin-top:0.9rem}
 .modal-act .gauche{margin-right:auto}
 
+/* ── Le choix du thème ─────────────────────────────────────────────────── */
+.themes{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:0.4rem}
+.theme-btn{display:flex;align-items:center;gap:0.55rem;background:var(--surface2);border:1px solid var(--border);
+           border-radius:8px;padding:0.45rem 0.55rem;cursor:pointer;color:var(--text-mid);
+           font-family:var(--font-body);font-size:0.95rem;text-align:left}
+.theme-btn:hover{color:var(--text);border-color:var(--border2)}
+.theme-btn.on{border-color:var(--accent);color:var(--text)}
+/* L'aperçu porte lui-même l'attribut du thème : les variables descendent
+   dessus, et chaque pastille se peint toute seule — aucune couleur n'est
+   recopiée en JavaScript, donc aucune ne peut mentir sur le thème. */
+.apercu{display:inline-flex;gap:2px;flex-shrink:0;border-radius:4px;overflow:hidden;
+        border:1px solid var(--border2)}
+.apercu i{width:11px;height:22px;display:block}
+
 /* ── Toast ──────────────────────────────────────────────────────────────── */
 #toasts{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(1rem + env(safe-area-inset-bottom));
         z-index:900;display:flex;flex-direction:column;gap:0.35rem;align-items:center;pointer-events:none;width:max-content;max-width:92vw}
 .toast{background:var(--surface3);border:1px solid var(--border2);border-left:3px solid var(--accent);
-       color:var(--text);font-size:0.82rem;padding:0.55rem 0.85rem;border-radius:7px;pointer-events:auto;
+       color:var(--text);font-size:0.94rem;padding:0.55rem 0.85rem;border-radius:7px;pointer-events:auto;
        box-shadow:0 8px 24px rgba(0,0,0,0.5);animation:toastIn 0.18s ease-out}
 .toast.ok{border-left-color:var(--green)}
 .toast.err{border-left-color:var(--danger)}
@@ -421,7 +510,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 //  ici le seul filet contre un navigateur qu'on vide.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const APP_VERSION='v1.4.1';
+const APP_VERSION='v1.5.0';
 
 // ── Outils ────────────────────────────────────────────────────────────────
 const $=s=>document.querySelector(s);
@@ -551,6 +640,27 @@ const sauveHisto      = ()=>ecrire('histo',histo);
 const sauveMenu       = ()=>ecrire('menu',menu);
 const sauvePropos     = ()=>ecrire('propos',propos);
 const sauveArchives   = ()=>ecrire('archives',archives);
+
+// ── Les thèmes ────────────────────────────────────────────────────────────
+// Dix palettes sombres, définies entièrement en CSS ; le JavaScript ne fait
+// que poser l'attribut et le retenir. Rien n'est recopié ici, donc rien ne peut
+// diverger de ce qui est réellement affiché.
+const THEMES=[
+  ['ardoise','Ardoise'],['brume','Brume'],['foret','Forêt'],['prune','Prune'],['ocean','Océan'],
+  ['argile','Argile'],['sable','Sable'],['nuit','Nuit'],['bois-de-rose','Bois de rose'],['charbon','Charbon']
+];
+const THEME_DEFAUT='ardoise';
+let theme=lire('theme',THEME_DEFAUT);
+if(!THEMES.some(([k])=>k===theme))theme=THEME_DEFAUT;
+function appliqueTheme(cle){
+  theme=THEMES.some(([k])=>k===cle)?cle:THEME_DEFAUT;
+  document.documentElement.setAttribute('data-theme',theme);
+  ecrire('theme',theme);
+  // La barre d'état du téléphone suit le fond de l'app, sinon elle tranche.
+  const m=document.querySelector('meta[name=theme-color]');
+  if(m)m.setAttribute('content',getComputedStyle(document.documentElement)
+        .getPropertyValue('--bg').trim()||'#161a1f');
+}
 
 // ── Toast ─────────────────────────────────────────────────────────────────
 function toast(msg,type,action){
@@ -1338,10 +1448,18 @@ function importe(fichier){
   fr.readAsText(fichier);
 }
 $('#btnMenu').onclick=()=>ouvreModale(`
-  <h2>Sauvegarde</h2>
-  <p style="font-size:0.85rem;color:var(--text-mid);line-height:1.55;margin-bottom:0.8rem">
-    Tout est gardé dans ce navigateur, et nulle part ailleurs : vider les données du
-    site efface la liste et les recettes. Le fichier JSON est la seule copie.</p>
+  <h2>Thème</h2>
+  <div class="themes" id="choixThemes">
+    ${THEMES.map(([k,nom])=>`<button class="theme-btn${k===theme?' on':''}" data-theme-cle="${k}">
+      <span class="apercu" data-theme="${k}"><i style="background:var(--bg)"></i>
+        <i style="background:var(--surface2)"></i><i style="background:var(--accent)"></i></span>
+      ${esc(nom)}</button>`).join('')}
+  </div>
+  <h2 style="margin-top:1rem">Sauvegarde</h2>
+  <p style="font-size:0.95rem;color:var(--text-mid);line-height:1.55;margin-bottom:0.8rem">
+    Tout est gardé dans ce navigateur, et nulle part ailleurs : chaque appareil a
+    donc sa propre liste, et vider les données du site efface la sienne. Le fichier
+    JSON est la seule copie, et le seul moyen de passer d'un appareil à l'autre.</p>
   <div class="modal-act" style="justify-content:flex-start;flex-wrap:wrap">
     <button class="btn" id="sgExp">Exporter</button>
     <button class="btn" id="sgImp">Importer</button>
@@ -1349,6 +1467,12 @@ $('#btnMenu').onclick=()=>ouvreModale(`
     <button class="btn danger" id="sgRaz">Tout effacer</button>
     <button class="btn" id="sgFerme" style="margin-left:auto">Fermer</button>
   </div>`,()=>{
+  $('#choixThemes').onclick=e=>{
+    const b=e.target.closest('[data-theme-cle]'); if(!b)return;
+    appliqueTheme(b.dataset.themeCle);
+    // On ne referme pas : essayer les dix d'affilée est exactement l'usage.
+    $$('#choixThemes .theme-btn').forEach(x=>x.classList.toggle('on',x===b));
+  };
   $('#sgExp').onclick=exporte;
   $('#sgImp').onclick=()=>$('#sgFic').click();
   $('#sgFic').onchange=e=>{ if(e.target.files[0])importe(e.target.files[0]); };
@@ -1359,8 +1483,10 @@ $('#btnMenu').onclick=()=>ouvreModale(`
     $('#sgRaz').outerHTML='<button class="btn danger" id="sgRaz2">Confirmer l\'effacement</button>';
     $('#sgRaz2').onclick=()=>{
       courses=[];recurrents=[];recettes=[];histo=[];menu=[];propos=[];archives=[];
-      try{ Object.keys(localStorage).filter(k=>k.startsWith(LS)).forEach(k=>localStorage.removeItem(k)); }catch(e){}
-      semer(); fermeModale(); montreSortie(null); rendTout();
+      try{ Object.keys(localStorage).filter(k=>k.startsWith(LS)&&k!==LS+'theme')
+             .forEach(k=>localStorage.removeItem(k)); }catch(e){}
+      appliqueTheme(theme);
+  semer(); fermeModale(); montreSortie(null); rendTout();
       toast('Tout a été remis à zéro','ok');
     };
   };
@@ -1453,6 +1579,7 @@ function rendTout(){ rendCourses(); rendRecettes(); rendMenu(); rendPropos(); re
 function init(){
   $('#chRayon').innerHTML='<option value="">Rayon auto</option>'+
     RAYONS.map(([k,l])=>`<option value="${k}">${esc(l)}</option>`).join('');
+  appliqueTheme(theme);
   semer();
   // Un menu dont les recettes ont disparu afficherait des lignes vides.
   menu=menu.filter(id=>recettes.some(r=>r.id===id));

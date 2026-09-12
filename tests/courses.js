@@ -7,6 +7,7 @@ const {chromium}=require('playwright');
 const NAVIGATEUR=process.env.PW_CHROME||'/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 const BASE=process.env.BASE||'http://127.0.0.1:8899/index.html';
 const R=[];const chk=(n,ok,d='')=>R.push([n,ok,d]);
+const THEME_DEFAUT_ATTENDU='ardoise';
 
 (async()=>{
 const b=await chromium.launch({executablePath:NAVIGATEUR});
@@ -532,6 +533,80 @@ const man=await p.evaluate(async()=>{
 chk('Le manifeste déclare le raccourci « Ajouter »',
     man.n===1&&man.url==='./?ajout='&&/Ajouter/.test(man.nom||''),JSON.stringify(man));
 chk('…et son icône est bien servie',man.icone===true,JSON.stringify(man));
+
+console.log('=== 13. LES THÈMES ===');
+const th=await p.evaluate(()=>{
+  // Chaque thème déclaré doit exister en CSS : sinon le bouton du sélecteur
+  // ne ferait rien, sans que rien ne le dise.
+  const fonds={}, accents={};
+  THEMES.forEach(([k])=>{
+    document.documentElement.setAttribute('data-theme',k);
+    const st=getComputedStyle(document.documentElement);
+    fonds[k]=st.getPropertyValue('--bg').trim();
+    accents[k]=st.getPropertyValue('--accent').trim();
+  });
+  appliqueTheme(theme);
+  return {n:THEMES.length,fonds,accents,
+          distincts:new Set(Object.values(fonds)).size,
+          accentsDistincts:new Set(Object.values(accents)).size,
+          vides:Object.values(fonds).filter(v=>!v).length};
+});
+chk('Dix thèmes sont proposés',th.n===10,String(th.n));
+chk('…chacun a bien sa palette en CSS',th.vides===0,JSON.stringify(th.fonds));
+chk('…et aucun n\'est le sosie d\'un autre',
+    th.distincts===10&&th.accentsDistincts===10,JSON.stringify({f:th.distincts,a:th.accentsDistincts}));
+
+// Tous les fonds restent sombres, et aucun texte n'est blanc pur sur noir pur :
+// c'est la promesse de cette série de thèmes.
+const doux=await p.evaluate(()=>{
+  const lum=h=>{const n=parseInt(h.slice(1),16);
+    return (0.2126*((n>>16)&255)+0.7152*((n>>8)&255)+0.0722*(n&255))/255;};
+  return THEMES.map(([k])=>{
+    document.documentElement.setAttribute('data-theme',k);
+    const st=getComputedStyle(document.documentElement);
+    return [k,lum(st.getPropertyValue('--bg').trim()),lum(st.getPropertyValue('--text').trim())];
+  });
+});
+chk('Tous les fonds sont sombres',doux.every(([,f])=>f<0.12),JSON.stringify(doux.map(x=>[x[0],+x[1].toFixed(3)])));
+chk('…et aucun texte n\'est blanc pur',doux.every(([,,t])=>t<0.94),JSON.stringify(doux.map(x=>[x[0],+x[2].toFixed(3)])));
+
+// Le sélecteur, par l'interface.
+await p.evaluate(()=>{ appliqueTheme('ardoise'); });
+await p.click('#btnMenu');
+const choix=await p.evaluate(()=>({
+  boutons:document.querySelectorAll('#choixThemes [data-theme-cle]').length,
+  marque:document.querySelectorAll('#choixThemes .theme-btn.on').length,
+  apercus:document.querySelectorAll('#choixThemes .apercu[data-theme]').length}));
+chk('Le menu propose les dix, celui en cours marqué',
+    choix.boutons===10&&choix.marque===1&&choix.apercus===10,JSON.stringify(choix));
+await p.click('#choixThemes [data-theme-cle="foret"]');
+const applique=await p.evaluate(()=>({
+  attribut:document.documentElement.getAttribute('data-theme'),
+  ouverte:document.getElementById('modalBg').classList.contains('open'),
+  marque:document.querySelector('#choixThemes .theme-btn.on').dataset.themeCle,
+  barre:document.querySelector('meta[name=theme-color]').getAttribute('content'),
+  fond:getComputedStyle(document.documentElement).getPropertyValue('--bg').trim()}));
+chk('Choisir un thème l\'applique aussitôt',applique.attribut==='foret',JSON.stringify(applique));
+chk('…sans refermer le menu, pour pouvoir les essayer',applique.ouverte===true);
+chk('…en déplaçant la marque',applique.marque==='foret',applique.marque);
+chk('…et la barre d\'état du téléphone suit le fond',
+    applique.barre===applique.fond,JSON.stringify(applique));
+await p.click('#sgFerme');
+
+await p.reload({waitUntil:'domcontentloaded'});
+await p.waitForFunction(()=>typeof appliqueTheme==='function');
+const garde=await p.evaluate(()=>({attribut:document.documentElement.getAttribute('data-theme'),theme}));
+chk('Le thème survit au rechargement',garde.attribut==='foret'&&garde.theme==='foret',JSON.stringify(garde));
+
+// Un thème inconnu dans la mémoire (version plus ancienne, fichier bricolé)
+// ne doit pas laisser l'app sans palette.
+const repli=await p.evaluate(()=>{
+  ecrire('theme','inexistant'); appliqueTheme(lire('theme','ardoise'));
+  return {attribut:document.documentElement.getAttribute('data-theme'),
+          fond:getComputedStyle(document.documentElement).getPropertyValue('--bg').trim()};
+});
+chk('Un thème inconnu retombe sur celui par défaut',
+    repli.attribut===THEME_DEFAUT_ATTENDU&&!!repli.fond,JSON.stringify(repli));
 
 chk('Aucune erreur JS',errs.length===0,errs.join(' | '));
 

@@ -67,6 +67,17 @@ suivants. « Aux courses » verse ses ingrédients dans la liste sans écraser c
 qui y était déjà. « Menu de la semaine » tire cinq repas distincts, chaque case
 étant relançable seule.
 
+## Les thèmes
+
+Dix palettes sombres — Ardoise, Brume, Forêt, Prune, Océan, Argile, Sable,
+Nuit, Bois de rose, Charbon — dans le menu « ··· ». Toutes construites pareil :
+un fond très peu saturé, trois surfaces qui montent doucement, un accent
+tempéré, et **aucun blanc pur sur aucun noir pur** — c'est ce contraste-là qui
+fatigue les yeux. Le thème est posé sur `<html data-theme>` : en changer ne
+reconstruit rien, le navigateur recalcule les variables. Il est relu avant la
+feuille de style, donc aucun clignotement au lancement, et il survit à
+« Tout effacer ».
+
 ## Sauvegarde
 
 Tout vit dans `localStorage`, et nulle part ailleurs : il n'y a pas de serveur.
