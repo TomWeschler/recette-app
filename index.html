@@ -83,14 +83,16 @@ main{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:0.9rem 0.9rem ca
    et remplir, et on ne veut pas faire défiler de l'un à l'autre. Les recettes
    restent en une colonne étroite, plus lisible. */
 #pageCourses{max-width:1180px}
-.deux-col{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 0.8rem;align-items:start}
-/* La colonne de saisie ne défile pas avec la liste : on pioche dedans pendant
-   qu'on garde la liste sous les yeux. */
-@media(min-width:860px){.col-saisie{position:sticky;top:0.2rem}}
-@media(max-width:859px){
-  .deux-col{grid-template-columns:minmax(0,1fr)}
-  /* Une seule colonne : on remplit avant de lire, la saisie repasse devant. */
-  .col-saisie{order:-1}
+.deux-col{display:grid;grid-template-columns:minmax(0,1fr);gap:0 0.8rem;align-items:start}
+/* Grand écran : la liste tient la colonne de gauche avec son historique en
+   dessous, la saisie occupe la droite sur toute la hauteur et reste en place
+   quand la liste défile. Sur un téléphone, rien de tout ça — une seule colonne,
+   dans l'ordre du code : la liste, la saisie, l'historique. */
+@media(min-width:860px){
+  .deux-col{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .col-liste{grid-column:1;grid-row:1}
+  .col-saisie{grid-column:2;grid-row:1/span 2;position:sticky;top:0.2rem}
+  .col-histo{grid-column:1;grid-row:2}
 }
 .page.active{display:block}
 
@@ -293,8 +295,11 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
   <section class="page active" id="pageCourses">
     <div class="deux-col">
       <!-- À gauche, ce qu'on lit en magasin ; à droite, ce qu'on remplit à la
-           maison. Sur un téléphone il n'y a qu'une colonne, et la saisie repasse
-           devant : on n'y construit pas sa liste en la regardant de haut. -->
+           maison ; l'historique sous la liste, dont il est le passé.
+           L'ordre du code est celui du téléphone, où il n'y a qu'une colonne :
+           la liste d'abord — c'est elle qu'on ouvre en magasin, et elle doit
+           être là sans un geste — puis de quoi la remplir, l'historique en
+           dernier. Les deux colonnes du grand écran sont posées par le CSS. -->
       <div class="col-liste">
         <div class="bloc">
           <div class="bloc-titre">La liste <span class="cpt" id="cptListe"></span>
@@ -303,10 +308,6 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
           <div id="listeCourses"></div>
         </div>
 
-        <div class="bloc" id="blocHisto">
-          <div class="bloc-titre">Historique <span class="cpt" id="cptHisto"></span></div>
-          <div id="listeHisto"></div>
-        </div>
       </div>
 
       <div class="col-saisie">
@@ -338,6 +339,13 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
           <div class="bloc-titre">Le quotidien — restock
             <span class="fin"><button class="btn" id="btnGererQuot">Gérer</button></span></div>
           <div class="puces" id="puceQuot"></div>
+        </div>
+      </div>
+
+      <div class="col-histo">
+        <div class="bloc" id="blocHisto">
+          <div class="bloc-titre">Historique <span class="cpt" id="cptHisto"></span></div>
+          <div id="listeHisto"></div>
         </div>
       </div>
     </div>
@@ -398,7 +406,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 //  ici le seul filet contre un navigateur qu'on vide.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const APP_VERSION='v1.3.0';
+const APP_VERSION='v1.3.1';
 
 // ── Outils ────────────────────────────────────────────────────────────────
 const $=s=>document.querySelector(s);

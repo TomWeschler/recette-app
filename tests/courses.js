@@ -202,24 +202,34 @@ const survie=await p.evaluate(()=>({n:courses.length,nom:courses[0]&&courses[0].
 chk('L\'article, sa quantité et son rayon sont toujours là',
     survie.n===1&&survie.qte===3&&survie.rayon==='epicerie',JSON.stringify(survie));
 
-console.log('=== 9. LA DISPOSITION : LA LISTE À GAUCHE ===');
+console.log('=== 9. LA DISPOSITION : LA LISTE D\'ABORD ===');
 await p.setViewportSize({width:1280,height:900});
-const geo=await p.evaluate(()=>{
-  const l=document.querySelector('.col-liste').getBoundingClientRect();
-  const s=document.querySelector('.col-saisie').getBoundingClientRect();
-  return {lx:Math.round(l.x),sx:Math.round(s.x),chevauche:l.right>s.x+1};
-});
-chk('Sur un écran large, la liste est à gauche des saisies',geo.lx<geo.sx,JSON.stringify(geo));
-chk('…et les deux colonnes ne se chevauchent pas',geo.chevauche===false,JSON.stringify(geo));
+const geo=await p.evaluate((()=>{
+  const b=s=>{const r=document.querySelector(s).getBoundingClientRect();
+              return {x:Math.round(r.x),y:Math.round(r.y+scrollY),bas:Math.round(r.bottom+scrollY),droite:Math.round(r.right)};};
+  const l=b('.col-liste'), sa=b('.col-saisie'), h=b('.col-histo');
+  return {l,sa,h};
+}));
+chk('Sur un écran large, la liste est à gauche des saisies',geo.l.x<geo.sa.x,JSON.stringify(geo));
+chk('…les deux colonnes ne se chevauchent pas',geo.l.droite<=geo.sa.x+1,JSON.stringify(geo));
+chk('…et l\'historique se range sous la liste, dans la même colonne',
+    geo.h.x===geo.l.x&&geo.h.y>=geo.l.bas,JSON.stringify(geo));
+
 await p.setViewportSize({width:430,height:930});
 const etroit=await p.evaluate(()=>{
-  const l=document.querySelector('.col-liste').getBoundingClientRect();
-  const s=document.querySelector('.col-saisie').getBoundingClientRect();
-  return {memeX:Math.round(l.x)===Math.round(s.x),saisieDessus:s.y<l.y,
+  const b=s=>{const r=document.querySelector(s).getBoundingClientRect();
+              return {x:Math.round(r.x),y:Math.round(r.y+scrollY),bas:Math.round(r.bottom+scrollY)};};
+  const l=b('.col-liste'), sa=b('.col-saisie'), h=b('.col-histo');
+  return {memeX:l.x===sa.x&&sa.x===h.x,ordre:[l.y,sa.y,h.y],
+          listeEnHaut:l.y<sa.y&&l.y<h.y,
+          sansChevauchement:sa.y>=l.bas&&h.y>=sa.bas,
           debord:document.documentElement.scrollWidth<=430};
 });
 chk('Sur un téléphone, une seule colonne',etroit.memeX===true,JSON.stringify(etroit));
-chk('…la saisie repasse au-dessus de la liste',etroit.saisieDessus===true,JSON.stringify(etroit));
+chk('…la liste vient en tout premier',etroit.listeEnHaut===true,JSON.stringify(etroit));
+chk('…puis les saisies, puis l\'historique',
+    etroit.ordre[0]<etroit.ordre[1]&&etroit.ordre[1]<etroit.ordre[2]&&etroit.sansChevauchement,
+    JSON.stringify(etroit));
 chk('…et rien ne déborde en largeur',etroit.debord===true,JSON.stringify(etroit));
 
 console.log('=== 10. « PROPOSE-MOI 3 REPAS » ===');

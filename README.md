@@ -39,9 +39,11 @@ téléphone, puis « Ajouter à l'écran d'accueil ».
   « aux courses » : c'est une lecture de la liste, donc retirer un article
   redonne le bouton.
 
-Sur un écran large, la liste occupe la colonne de gauche et tout ce qui la
-remplit la colonne de droite, qui reste en place quand la liste défile. Sur un
-téléphone, une seule colonne, la saisie au-dessus.
+Sur un écran large, la liste occupe la colonne de gauche avec son historique en
+dessous, et tout ce qui la remplit la colonne de droite, qui reste en place
+quand la liste défile. Sur un téléphone, une seule colonne et **la liste en
+tout premier** — c'est elle qu'on ouvre en magasin, elle doit être là sans un
+geste — puis de quoi la remplir, l'historique en dernier.
 
 ## Le tirage
 
