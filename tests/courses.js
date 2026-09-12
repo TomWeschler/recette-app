@@ -435,6 +435,92 @@ const apresRech=await p.evaluate(()=>({n:archives.length,
 chk('…et il est toujours là au rechargement',
     apresRech.n===2&&apresRech.lignes===2,JSON.stringify(apresRech));
 
+console.log('=== 12. L\'AJOUT ÉCLAIR, ET LE RACCOURCI DU TÉLÉPHONE ===');
+const ecl=await p.evaluate(()=>{
+  courses=[]; sauveCourses(); rendCourses(); fermeEclair();
+  const ferme=document.getElementById('formEclair').hidden;
+  document.getElementById('btnPlus').click();
+  return {ferme,ouvert:!document.getElementById('formEclair').hidden,
+          focus:document.activeElement.id};
+});
+chk('Le champ éclair est fermé tant qu\'on ne le demande pas',ecl.ferme===true,JSON.stringify(ecl));
+chk('Le « + » l\'ouvre, curseur dedans',ecl.ouvert&&ecl.focus==='chEclair',JSON.stringify(ecl));
+
+await p.fill('#chEclair','Piles AA');
+await p.press('#chEclair','Enter');
+await p.fill('#chEclair','Bougies');
+await p.press('#chEclair','Enter');
+const deux=await p.evaluate(()=>({
+  n:courses.length,rayons:courses.map(i=>i.rayon),noms:courses.map(i=>i.nom).sort(),
+  ouvert:!document.getElementById('formEclair').hidden,
+  champ:document.getElementById('chEclair').value,
+  focus:document.activeElement.id}));
+chk('Entrée ajoute, toujours dans « Autre »',
+    deux.n===2&&deux.rayons.every(r=>r==='autre'),JSON.stringify(deux));
+chk('…même pour un article que l\'app saurait classer',
+    (await p.evaluate(()=>{ document.getElementById('chEclair').value='Poulet';
+      document.getElementById('formEclair').dispatchEvent(new Event('submit',{cancelable:true}));
+      return courses.find(i=>i.nom==='Poulet').rayon==='autre'; })),'Poulet');
+chk('…et le champ reste ouvert et vide pour le suivant',
+    deux.ouvert&&deux.champ===''&&deux.focus==='chEclair',JSON.stringify(deux));
+
+const aVide=await p.evaluate(()=>{
+  const avant=courses.length;
+  document.getElementById('chEclair').value='   ';
+  document.getElementById('formEclair').dispatchEvent(new Event('submit',{cancelable:true}));
+  return {avant,apres:courses.length,ferme:document.getElementById('formEclair').hidden};
+});
+chk('Valider à vide n\'ajoute rien et referme',
+    aVide.apres===aVide.avant&&aVide.ferme===true,JSON.stringify(aVide));
+
+// Échap referme sans rien perdre ; « Fini » aussi.
+await p.click('#btnPlus');
+await p.fill('#chEclair','Brouillon');
+await p.press('#chEclair','Escape');
+const echap=await p.evaluate(()=>({ferme:document.getElementById('formEclair').hidden,
+  modale:document.getElementById('modalBg').classList.contains('open'),
+  n:courses.filter(i=>i.nom==='Brouillon').length}));
+chk('Échap referme le champ sans rien ajouter',
+    echap.ferme===true&&echap.n===0,JSON.stringify(echap));
+chk('…et ne touche à rien d\'autre',echap.modale===false);
+
+// Le raccourci de l'icône : ?ajout= vide ouvre le champ, sans rien ajouter.
+await p.goto(BASE+'?ajout=',{waitUntil:'domcontentloaded'});
+await p.waitForFunction(()=>typeof litIntention==='function');
+const raccourci=await p.evaluate(()=>({
+  page:page,ouvert:!document.getElementById('formEclair').hidden,
+  focus:document.activeElement.id,url:location.search}));
+chk('Le raccourci ouvre la page des courses, champ prêt',
+    raccourci.page==='courses'&&raccourci.ouvert&&raccourci.focus==='chEclair',JSON.stringify(raccourci));
+chk('…et l\'URL est nettoyée aussitôt',raccourci.url==='',raccourci.url);
+
+// Un texte derrière le signe égal est ajouté tel quel.
+await p.evaluate(()=>{ courses=[]; sauveCourses(); });
+await p.goto(BASE+'?ajout=Sacs%20cong%C3%A9lation',{waitUntil:'domcontentloaded'});
+await p.waitForFunction(()=>typeof litIntention==='function');
+const avecTexte=await p.evaluate(()=>({n:courses.length,
+  nom:courses[0]&&courses[0].nom,rayon:courses[0]&&courses[0].rayon,url:location.search}));
+chk('Un texte dans l\'URL est ajouté dans « Autre »',
+    avecTexte.n===1&&avecTexte.nom==='Sacs congélation'&&avecTexte.rayon==='autre',JSON.stringify(avecTexte));
+// Le nettoyage de l'URL n'est pas cosmétique : c'est ce qui empêche un
+// rafraîchissement de rejouer l'ajout.
+await p.reload({waitUntil:'domcontentloaded'});
+await p.waitForFunction(()=>typeof litIntention==='function');
+chk('…et un rafraîchissement ne le rejoue pas',
+    await p.evaluate(()=>courses.length===1),
+    await p.evaluate(()=>JSON.stringify(courses.map(i=>i.nom))));
+
+// Le manifeste déclare bien ce raccourci, et son icône existe.
+const man=await p.evaluate(async()=>{
+  const m=await (await fetch('manifest.webmanifest')).json();
+  const s=(m.shortcuts||[])[0]||{};
+  const ico=s.icons&&s.icons[0]?await fetch(s.icons[0].src.replace('./','')):{ok:false};
+  return {n:(m.shortcuts||[]).length,url:s.url,nom:s.name,icone:ico.ok};
+});
+chk('Le manifeste déclare le raccourci « Ajouter »',
+    man.n===1&&man.url==='./?ajout='&&/Ajouter/.test(man.nom||''),JSON.stringify(man));
+chk('…et son icône est bien servie',man.icone===true,JSON.stringify(man));
+
 chk('Aucune erreur JS',errs.length===0,errs.join(' | '));
 
 await b.close();

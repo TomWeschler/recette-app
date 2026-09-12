@@ -4,13 +4,13 @@
 // du domaine, il n'y a donc rien à laisser passer. Tout est local, et tout est
 // caché — y compris les polices, qui sont dans ce dossier précisément pour
 // être dans la portée de ce service worker.
-const VERSION = 'v1.3.1';
+const VERSION = 'v1.4.0';
 const SHELL   = 'recette-shell-' + VERSION;
 const ASSETS  = 'recette-assets-' + VERSION;
 
 const SHELL_FILES = [
   './', './index.html', './manifest.webmanifest',
-  './icon-192.png', './icon-512.png', './icon-maskable.png',
+  './icon-192.png', './icon-512.png', './icon-maskable.png', './sc-ajout.png',
   './fonts/syne-400-latin.woff2', './fonts/syne-600-latin.woff2',
   './fonts/syne-700-latin.woff2', './fonts/syne-800-latin.woff2',
   './fonts/space-mono-400-latin.woff2', './fonts/space-mono-700-latin.woff2'

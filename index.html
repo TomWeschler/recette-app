@@ -116,6 +116,13 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 .btn.primaire:hover{filter:brightness(1.08);color:#1a0f07}
 .btn.danger:hover{color:var(--danger);border-color:var(--danger)}
 .btn:disabled{opacity:0.4;cursor:not-allowed}
+/* Un bouton d'une seule glyphe reste carré, quelle que soit la glyphe. */
+.btn.carre{padding:0.5rem 0;width:2rem;text-align:center;font-size:0.8rem;line-height:1}
+/* Le champ éclair : il s'ouvre au-dessus de la liste, là où le résultat
+   apparaîtra, et reste ouvert pour l'article suivant. */
+.eclair{display:flex;gap:0.45rem;margin-bottom:0.6rem}
+.eclair input{flex:1;min-width:0}
+.eclair[hidden]{display:none}
 .vide{color:var(--text-dim);font-size:0.85rem;text-align:center;padding:1.4rem 0.5rem;line-height:1.6}
 
 /* ── Courses : ajout ────────────────────────────────────────────────────── */
@@ -303,8 +310,16 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
       <div class="col-liste">
         <div class="bloc">
           <div class="bloc-titre">La liste <span class="cpt" id="cptListe"></span>
-            <span class="fin"><button class="btn" id="btnViderCoches">Vider les cochés</button>
+            <span class="fin"><button class="btn carre" id="btnPlus" title="Ajouter vite un article dans « Autre »"
+              aria-label="Ajouter vite un article">+</button>
+            <button class="btn" id="btnViderCoches">Vider les cochés</button>
             <button class="btn primaire" id="btnCourseFaite">Course faite</button></span></div>
+          <form class="eclair" id="formEclair" autocomplete="off" hidden>
+            <label class="sr-only" for="chEclair">Article à ajouter dans « Autre »</label>
+            <input id="chEclair" placeholder="Un article, puis Entrée — rayon « Autre »" enterkeyhint="done">
+            <button class="btn primaire" type="submit">Ajouter</button>
+            <button class="btn" type="button" id="btnEclairFin">Fini</button>
+          </form>
           <div id="listeCourses"></div>
         </div>
 
@@ -406,7 +421,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 //  ici le seul filet contre un navigateur qu'on vide.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const APP_VERSION='v1.3.1';
+const APP_VERSION='v1.4.0';
 
 // ── Outils ────────────────────────────────────────────────────────────────
 const $=s=>document.querySelector(s);
@@ -825,6 +840,59 @@ $('#listePropos').addEventListener('click',e=>{
     propos[n]=r.id; sauvePropos(); rendPropos();
   }
 });
+
+// ── L'ajout éclair ────────────────────────────────────────────────────────
+// Le formulaire complet est en bas sur un téléphone, sous toute la liste : y
+// descendre pour un seul article qu'on vient de voir manquer était un voyage.
+// Ici, un « + » au-dessus de la liste ouvre un champ unique, sans rayon à
+// choisir — tout tombe dans « Autre », où l'on retrouve ce qu'on n'a pas
+// classé — et le champ reste ouvert : on enchaîne trois articles d'affilée.
+// C'est aussi ce qu'ouvre le raccourci de l'icône du téléphone.
+function ouvreEclair(){
+  const f=$('#formEclair');
+  f.hidden=false;
+  $('#chEclair').focus();
+}
+function fermeEclair(){
+  $('#formEclair').hidden=true;
+  $('#chEclair').value='';
+}
+$('#btnPlus').onclick=()=>{ $('#formEclair').hidden?ouvreEclair():fermeEclair(); };
+$('#btnEclairFin').onclick=fermeEclair;
+$('#chEclair').addEventListener('keydown',e=>{ if(e.key==='Escape'){ e.stopPropagation(); fermeEclair(); } });
+$('#formEclair').addEventListener('submit',e=>{
+  e.preventDefault();
+  const ch=$('#chEclair'), nom=ch.value.trim();
+  if(!nom){ fermeEclair(); return; }
+  const r=ajoute(nom,'autre','eclair');
+  sauveCourses(); sauveRecurrents();
+  ch.value=''; rendCourses();
+  // On garde le champ ouvert et vide : le geste suivant est presque toujours
+  // un autre article.
+  ouvreEclair();
+  if(r&&r.etat==='incremente')toast(`${r.item.nom} — déjà là, quantité ${r.item.qte}`);
+  else if(r&&r.etat==='repris')toast(`${r.item.nom} — remis à prendre`);
+});
+
+// Le raccourci de l'icône ouvre « ./?ajout= » : l'app se pose sur les courses,
+// le champ éclair ouvert. Un texte derrière le signe égal est ajouté tel quel,
+// ce qui permet d'y envoyer un article depuis ailleurs. L'URL est nettoyée
+// aussitôt : sans ça, un rafraîchissement rejouerait l'ajout, et on repartirait
+// avec deux paquets de café.
+function litIntention(){
+  let u;
+  try{ u=new URLSearchParams(location.search); }catch(e){ return; }
+  if(!u.has('ajout'))return;
+  const texte=(u.get('ajout')||'').trim();
+  try{ history.replaceState(null,'',location.pathname); }catch(e){}
+  vaVers('courses');
+  if(texte){
+    ajoute(texte,'autre','eclair');
+    sauveCourses(); sauveRecurrents(); rendCourses();
+    toast(`${texte} — ajouté dans « Autre »`,'ok');
+  }
+  ouvreEclair();
+}
 
 // ── Une seule liste courante, et derrière elle l'historique ───────────────
 // « Course faite » classe la liste entière et en ouvre une vide : il n'y a
@@ -1390,6 +1458,7 @@ function init(){
   propos=propos.filter(id=>recettes.some(r=>r.id===id));
   vaVers(page);
   rendTout();
+  litIntention();
 }
 init();
 </script>
