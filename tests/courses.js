@@ -151,6 +151,96 @@ const survie=await p.evaluate(()=>({n:courses.length,nom:courses[0]&&courses[0].
 chk('L\'article, sa quantité et son rayon sont toujours là',
     survie.n===1&&survie.qte===3&&survie.rayon==='epicerie',JSON.stringify(survie));
 
+console.log('=== 9. LA DISPOSITION : LA LISTE À GAUCHE ===');
+await p.setViewportSize({width:1280,height:900});
+const geo=await p.evaluate(()=>{
+  const l=document.querySelector('.col-liste').getBoundingClientRect();
+  const s=document.querySelector('.col-saisie').getBoundingClientRect();
+  return {lx:Math.round(l.x),sx:Math.round(s.x),chevauche:l.right>s.x+1};
+});
+chk('Sur un écran large, la liste est à gauche des saisies',geo.lx<geo.sx,JSON.stringify(geo));
+chk('…et les deux colonnes ne se chevauchent pas',geo.chevauche===false,JSON.stringify(geo));
+await p.setViewportSize({width:430,height:930});
+const etroit=await p.evaluate(()=>{
+  const l=document.querySelector('.col-liste').getBoundingClientRect();
+  const s=document.querySelector('.col-saisie').getBoundingClientRect();
+  return {memeX:Math.round(l.x)===Math.round(s.x),saisieDessus:s.y<l.y,
+          debord:document.documentElement.scrollWidth<=430};
+});
+chk('Sur un téléphone, une seule colonne',etroit.memeX===true,JSON.stringify(etroit));
+chk('…la saisie repasse au-dessus de la liste',etroit.saisieDessus===true,JSON.stringify(etroit));
+chk('…et rien ne déborde en largeur',etroit.debord===true,JSON.stringify(etroit));
+
+console.log('=== 10. « PROPOSE-MOI 3 REPAS » ===');
+await p.evaluate(()=>{ courses=[]; propos=[]; histo=[]; sauveCourses(); rendTout(); });
+const vide=await p.evaluate(()=>document.querySelector('#listePropos .vide')!==null);
+chk('Sans idée, la section le dit plutôt que de rester vide',vide===true);
+
+await p.click('#btnPropos');
+const trois=await p.evaluate(()=>({n:propos.length,distincts:new Set(propos).size,
+  lignes:document.querySelectorAll('#listePropos .propos-ligne').length,
+  connues:propos.every(id=>recettes.some(r=>r.id===id)),
+  boutons:document.querySelectorAll('#listePropos [data-ajout]').length}));
+chk('Trois repas sont proposés',trois.n===3,JSON.stringify(trois));
+chk('…tous différents, et tous du répertoire',trois.distincts===3&&trois.connues,JSON.stringify(trois));
+chk('…affichés, chacun avec son bouton d\'ajout',
+    trois.lignes===3&&trois.boutons===3,JSON.stringify(trois));
+
+const trio1=await p.evaluate(()=>propos.slice());
+await p.click('#btnPropos');
+const trio2=await p.evaluate(()=>propos.slice());
+chk('Redemander rend trois autres repas',
+    trio2.every(id=>!trio1.includes(id)),JSON.stringify({trio1,trio2}));
+
+// Le bouton individuel : il ne verse QUE cette recette-là.
+const un=await p.evaluate(()=>{
+  courses=[]; sauveCourses(); rendTout();
+  const cible=recettes.find(r=>r.id===propos[0]);
+  document.querySelector('#listePropos .propos-ligne [data-ajout]').click();
+  return {liste:courses.length,attendu:cible.ingredients.length,nom:cible.nom,
+          autres:propos.slice(1).map(id=>recettes.find(r=>r.id===id).nom)};
+});
+chk('Le bouton d\'une idée verse ses ingrédients',un.liste===un.attendu,JSON.stringify(un));
+const seul=await p.evaluate(()=>{
+  const autres=propos.slice(1).map(id=>recettes.find(r=>r.id===id));
+  return autres.every(r=>r.ingredients.some(i=>!dansListe(i.nom)));
+});
+chk('…et seulement les siens',seul===true);
+
+const etat=await p.evaluate(()=>({
+  dedans:document.querySelectorAll('#listePropos .propos-ligne.dedans').length,
+  restants:document.querySelectorAll('#listePropos [data-ajout]').length}));
+chk('La ligne versée passe en « aux courses »',etat.dedans===1,JSON.stringify(etat));
+chk('…et les deux autres gardent leur bouton',etat.restants===2,JSON.stringify(etat));
+
+// L'état se lit dans la liste : la vider redonne le bouton.
+await p.evaluate(()=>{ courses=[]; sauveCourses(); rendCourses(); });
+chk('Vider la liste redonne son bouton à l\'idée',
+    await p.evaluate(()=>document.querySelectorAll('#listePropos [data-ajout]').length===3));
+
+// Relancer une seule idée.
+const rel=await p.evaluate(()=>{
+  const avant=propos.slice();
+  document.querySelectorAll('#listePropos [data-relance]')[1].click();
+  return {avant,apres:propos.slice()};
+});
+chk('Relancer une idée ne touche pas les deux autres',
+    rel.apres[0]===rel.avant[0]&&rel.apres[2]===rel.avant[2],JSON.stringify(rel));
+chk('…et ne recopie pas une idée déjà proposée',new Set(rel.apres).size===3,JSON.stringify(rel.apres));
+
+// Les idées survivent au rechargement, et un répertoire vidé ne laisse pas de trous.
+await p.reload({waitUntil:'domcontentloaded'});
+await p.waitForFunction(()=>typeof proposer==='function');
+chk('Les idées sont toujours là au rechargement',
+    await p.evaluate(()=>propos.length===3&&document.querySelectorAll('#listePropos .propos-ligne').length===3));
+const trou=await p.evaluate(()=>{
+  recettes=recettes.filter(r=>r.id!==propos[0]);
+  rendPropos();
+  return {n:propos.length,lignes:document.querySelectorAll('#listePropos .propos-ligne').length};
+});
+chk('Une recette supprimée quitte les idées, sans ligne vide',
+    trou.n===2&&trou.lignes===2,JSON.stringify(trou));
+
 chk('Aucune erreur JS',errs.length===0,errs.join(' | '));
 
 await b.close();

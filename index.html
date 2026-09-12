@@ -79,6 +79,19 @@ header{flex-shrink:0;height:56px;background:var(--bg);border-bottom:1px solid va
 main{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:0.9rem 0.9rem calc(2.5rem + env(safe-area-inset-bottom));
      -webkit-overflow-scrolling:touch}
 .page{display:none;max-width:760px;margin:0 auto}
+/* La page des courses est la seule à deux colonnes : elle a deux usages, lire
+   et remplir, et on ne veut pas faire défiler de l'un à l'autre. Les recettes
+   restent en une colonne étroite, plus lisible. */
+#pageCourses{max-width:1180px}
+.deux-col{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 0.8rem;align-items:start}
+/* La colonne de saisie ne défile pas avec la liste : on pioche dedans pendant
+   qu'on garde la liste sous les yeux. */
+@media(min-width:860px){.col-saisie{position:sticky;top:0.2rem}}
+@media(max-width:859px){
+  .deux-col{grid-template-columns:minmax(0,1fr)}
+  /* Une seule colonne : on remplit avant de lire, la saisie repasse devant. */
+  .col-saisie{order:-1}
+}
 .page.active{display:block}
 
 /* ── Pièces communes ────────────────────────────────────────────────────── */
@@ -173,8 +186,17 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 .sortie-act{display:flex;gap:0.4rem;margin-top:0.8rem;justify-content:center;flex-wrap:wrap}
 
 /* ── Recettes : menu de la semaine ──────────────────────────────────────── */
-.menu-ligne{display:flex;align-items:center;gap:0.55rem;background:var(--surface);border:1px solid var(--border);
-            border-radius:8px;padding:0.5rem 0.6rem;margin-bottom:0.3rem}
+.menu-ligne,.propos-ligne{display:flex;align-items:center;gap:0.55rem;background:var(--surface);
+            border:1px solid var(--border);border-radius:8px;padding:0.5rem 0.6rem;margin-bottom:0.3rem}
+.propos-txt{flex:1;min-width:0}
+.propos-nom{display:block;font-size:0.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.propos-meta{display:block;font-family:var(--font-mono);font-size:0.5rem;letter-spacing:0.1em;
+             text-transform:uppercase;color:var(--text-dim);margin-top:0.15rem}
+/* Une idée déjà versée dans la liste se voit d'un coup d'œil : on ne la
+   propose plus d'ajouter, on dit qu'elle y est. */
+.propos-ligne.dedans{border-color:var(--accent-dim);background:var(--accent-dim)}
+.propos-ligne .fait{font-family:var(--font-mono);font-size:0.5rem;letter-spacing:0.1em;
+                    text-transform:uppercase;color:var(--green);padding:0 0.3rem;white-space:nowrap}
 .menu-jour{font-family:var(--font-mono);font-size:0.52rem;letter-spacing:0.12em;color:var(--text-dim);
            width:2.6rem;flex-shrink:0;text-transform:uppercase}
 .menu-nom{flex:1;min-width:0;font-size:0.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -239,34 +261,49 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 <main>
   <!-- ── LISTE DE COURSES ──────────────────────────────────────────────── -->
   <section class="page active" id="pageCourses">
-    <div class="bloc">
-      <form class="ajout" id="formAjout" autocomplete="off">
-        <label class="sr-only" for="chAjout">Article à ajouter</label>
-        <input id="chAjout" placeholder="Ajouter un article…" list="listeConnus" enterkeyhint="done">
-        <datalist id="listeConnus"></datalist>
-        <label class="sr-only" for="chRayon">Rayon</label>
-        <select id="chRayon"></select>
-        <button class="btn primaire" type="submit">Ajouter</button>
-      </form>
-    </div>
+    <div class="deux-col">
+      <!-- À gauche, ce qu'on lit en magasin ; à droite, ce qu'on remplit à la
+           maison. Sur un téléphone il n'y a qu'une colonne, et la saisie repasse
+           devant : on n'y construit pas sa liste en la regardant de haut. -->
+      <div class="col-liste">
+        <div class="bloc">
+          <div class="bloc-titre">La liste <span class="cpt" id="cptListe"></span>
+            <span class="fin"><button class="btn" id="btnViderCoches">Vider les cochés</button></span></div>
+          <div id="listeCourses"></div>
+        </div>
+      </div>
 
-    <div class="bloc" id="blocHebdo">
-      <div class="bloc-titre">Courses de la semaine <span class="cpt" id="cptHebdo"></span>
-        <span class="fin"><button class="btn" id="btnToutHebdo">Tout prendre</button>
-        <button class="btn" id="btnGererHebdo">Gérer</button></span></div>
-      <div class="puces" id="puceHebdo"></div>
-    </div>
+      <div class="col-saisie">
+        <div class="bloc">
+          <form class="ajout" id="formAjout" autocomplete="off">
+            <label class="sr-only" for="chAjout">Article à ajouter</label>
+            <input id="chAjout" placeholder="Ajouter un article…" list="listeConnus" enterkeyhint="done">
+            <datalist id="listeConnus"></datalist>
+            <label class="sr-only" for="chRayon">Rayon</label>
+            <select id="chRayon"></select>
+            <button class="btn primaire" type="submit">Ajouter</button>
+          </form>
+        </div>
 
-    <div class="bloc" id="blocQuotidien">
-      <div class="bloc-titre">Le quotidien — restock
-        <span class="fin"><button class="btn" id="btnGererQuot">Gérer</button></span></div>
-      <div class="puces" id="puceQuot"></div>
-    </div>
+        <div class="bloc" id="blocPropos">
+          <div class="bloc-titre">Idées de repas
+            <span class="fin"><button class="btn primaire" id="btnPropos">Propose-moi 3 repas</button></span></div>
+          <div id="listePropos"></div>
+        </div>
 
-    <div class="bloc">
-      <div class="bloc-titre">La liste <span class="cpt" id="cptListe"></span>
-        <span class="fin"><button class="btn" id="btnViderCoches">Vider les cochés</button></span></div>
-      <div id="listeCourses"></div>
+        <div class="bloc" id="blocHebdo">
+          <div class="bloc-titre">Courses de la semaine <span class="cpt" id="cptHebdo"></span>
+            <span class="fin"><button class="btn" id="btnToutHebdo">Tout prendre</button>
+            <button class="btn" id="btnGererHebdo">Gérer</button></span></div>
+          <div class="puces" id="puceHebdo"></div>
+        </div>
+
+        <div class="bloc" id="blocQuotidien">
+          <div class="bloc-titre">Le quotidien — restock
+            <span class="fin"><button class="btn" id="btnGererQuot">Gérer</button></span></div>
+          <div class="puces" id="puceQuot"></div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -325,7 +362,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 //  ici le seul filet contre un navigateur qu'on vide.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const APP_VERSION='v1.0.0';
+const APP_VERSION='v1.1.0';
 
 // ── Outils ────────────────────────────────────────────────────────────────
 const $=s=>document.querySelector(s);
@@ -443,6 +480,7 @@ let recurrents = lire('recurrents',[]);
 let recettes   = lire('recettes',[]);
 let histo      = lire('histo',[]);      // ids tirés, du plus récent au plus ancien
 let menu       = lire('menu',[]);       // le menu de la semaine, s'il est ouvert
+let propos     = lire('propos',[]);     // les trois idées posées à côté de la liste
 let filtreTag  = null;                  // volontairement non persisté : un filtre
                                         // oublié d'hier ferait croire à un
                                         // répertoire à moitié vide.
@@ -451,6 +489,7 @@ const sauveRecurrents = ()=>ecrire('recurrents',recurrents);
 const sauveRecettes   = ()=>ecrire('recettes',recettes);
 const sauveHisto      = ()=>ecrire('histo',histo);
 const sauveMenu       = ()=>ecrire('menu',menu);
+const sauvePropos     = ()=>ecrire('propos',propos);
 
 // ── Toast ─────────────────────────────────────────────────────────────────
 function toast(msg,type,action){
@@ -594,7 +633,10 @@ function rendCourses(){
         <button class="sup" data-act="sup" aria-label="Supprimer ${esc(i.nom)}">✕</button>
       </div>`).join('')}</div>`;
   }).join('');
-  $('#listeCourses').innerHTML=html||'<div class="vide">Liste vide.<br>Ajoute un article, ou pioche dans les propositions ci-dessus.</div>';
+  $('#listeCourses').innerHTML=html||'<div class="vide">Liste vide.<br>Ajoute un article, ou pioche dans les propositions à côté.</div>';
+  // L'état « déjà aux courses » des idées se lit dans la liste : il change dès
+  // qu'on y ajoute ou qu'on en retire quelque chose.
+  if($('#listePropos'))rendPropos();
 }
 
 // Un seul écouteur pour toute la liste : les lignes sont reconstruites à
@@ -659,6 +701,67 @@ $('#btnViderCoches').onclick=()=>{
   toast(`${partis.length} article${partis.length>1?'s':''} retiré${partis.length>1?'s':''}`,'ok',
     ['Annuler',()=>{ courses=courses.concat(partis); sauveCourses(); rendCourses(); }]);
 };
+
+// ── Trois idées de repas, à côté de la liste ──────────────────────────────
+// On construit sa liste de courses et on sèche sur le contenu des repas : la
+// question se pose ici, pas sur l'autre page. C'est le même tirage que celui
+// des recettes — mêmes règles de variété — mais il sert une autre main : on
+// verse les ingrédients plat par plat, en gardant la liste sous les yeux.
+const NB_PROPOS=3;
+function proposer(){
+  if(!recettes.length){ toast('Aucune recette au répertoire','err'); return; }
+  const anciens=propos.slice(), pris=[];
+  for(let i=0;i<NB_PROPOS;i++){
+    // Redemander doit rendre autre chose : la proposition précédente est
+    // écartée. Dans un répertoire trop court pour ça, on relâche l'exigence
+    // plutôt que de rendre moins de trois plats.
+    const r=tire(null,pris.concat(anciens))||tire(null,pris);
+    if(!r)break;
+    pris.push(r.id);
+  }
+  propos=pris; sauvePropos(); rendPropos();
+}
+// Une idée est « déjà aux courses » quand tous ses ingrédients y sont : c'est
+// une lecture de la liste, jamais un drapeau posé de côté — effacer un article
+// de la liste redonne donc le bouton, ce qui est exactement ce qu'on veut.
+function dejaAuxCourses(r){
+  const ing=r.ingredients||[];
+  return ing.length>0&&ing.every(i=>dansListe(i.nom));
+}
+function rendPropos(){
+  propos=propos.filter(id=>recettes.some(r=>r.id===id));
+  $('#listePropos').innerHTML=propos.length?propos.map(id=>{
+    const r=recettes.find(x=>x.id===id);
+    const dedans=dejaAuxCourses(r), j=joursDepuis(r.dernier);
+    return `<div class="propos-ligne${dedans?' dedans':''}" data-id="${r.id}">
+      <span class="propos-txt">
+        <span class="propos-nom">${esc(r.nom)}</span>
+        <span class="propos-meta">${[r.duree?r.duree+' min':'',(r.tags||[]).join(' · '),
+          j===null?'jamais faite':j===0?"aujourd'hui":`il y a ${j} j`].filter(Boolean).join('  —  ')}</span>
+      </span>
+      <button class="btn" data-relance aria-label="Une autre idée">↻</button>
+      ${dedans?'<span class="fait">✓ aux courses</span>'
+              :'<button class="btn primaire" data-ajout>+ Courses</button>'}
+    </div>`;
+  }).join(''):'<div class="vide">Pas d\'idée pour l\'instant.<br>« Propose-moi 3 repas » en tire trois, au hasard mais sans répéter.</div>';
+}
+$('#btnPropos').onclick=proposer;
+$('#listePropos').addEventListener('click',e=>{
+  const ligne=e.target.closest('.propos-ligne'); if(!ligne)return;
+  const n=propos.indexOf(ligne.dataset.id); if(n<0)return;
+  if(e.target.closest('[data-ajout]')){
+    const r=recettes.find(x=>x.id===propos[n]);
+    if(r)versCourses([r]);          // versCourses rend la liste, donc la ligne
+    return;                         // passe d'elle-même en « aux courses »
+  }
+  if(e.target.closest('[data-relance]')){
+    // On exclut les deux autres idées, pas celle qu'on relance : sinon le seul
+    // plat qu'on voulait changer resterait candidat contre lui-même.
+    const r=tire(null,propos.filter((_,i)=>i!==n));
+    if(!r){ toast('Plus rien à proposer','err'); return; }
+    propos[n]=r.id; sauvePropos(); rendPropos();
+  }
+});
 
 // ── Gérer les récurrents ──────────────────────────────────────────────────
 function gereRecurrents(cadence){
@@ -805,8 +908,9 @@ function versCourses(recs){
   }));
   sauveCourses(); sauveRecurrents(); rendCourses();
   if(!ajoutes&&!deja){ toast('Cette recette n\'a aucun ingrédient','err'); return; }
+  // Le raccourci vers la liste n'a de sens que si on n'y est pas déjà.
   toast(`${ajoutes} ingrédient${ajoutes>1?'s':''} ajouté${ajoutes>1?'s':''}${deja?` — ${deja} déjà dans la liste`:''}`,'ok',
-        ['Voir la liste',()=>vaVers('courses')]);
+        page==='courses'?null:['Voir la liste',()=>vaVers('courses')]);
 }
 
 // ── Le menu de la semaine ─────────────────────────────────────────────────
@@ -950,9 +1054,10 @@ function editeRecette(rec){
       const copie=r, place=recettes.indexOf(r);
       recettes=recettes.filter(x=>x.id!==r.id);
       menu=menu.filter(id=>id!==r.id); histo=histo.filter(id=>id!==r.id);
+      propos=propos.filter(id=>id!==r.id); sauvePropos();
       if(sortieId===r.id)montreSortie(null);
       sauveRecettes(); sauveMenu(); sauveHisto();
-      fermeModale(); rendRecettes(); rendMenu();
+      fermeModale(); rendRecettes(); rendMenu(); rendPropos();
       toast('Recette supprimée','ok',['Annuler',()=>{
         recettes.splice(place<0?recettes.length:place,0,copie);
         sauveRecettes(); rendRecettes();
@@ -967,7 +1072,7 @@ $('#btnNouvelleRecette').onclick=()=>editeRecette(null);
 // ═══════════════════════════════════════════════════════════════════════════
 function paquet(){
   return {app:'recette',version:APP_VERSION,le:new Date().toISOString(),
-          courses,recurrents,recettes,histo,menu};
+          courses,recurrents,recettes,histo,menu,propos};
 }
 function exporte(){
   const a=document.createElement('a');
@@ -987,7 +1092,9 @@ function importe(fichier){
     recettes=j.recettes;
     histo=Array.isArray(j.histo)?j.histo:[];
     menu=Array.isArray(j.menu)?j.menu:[];
-    sauveCourses(); sauveRecurrents(); sauveRecettes(); sauveHisto(); sauveMenu(); ecrire('seme',true);
+    propos=Array.isArray(j.propos)?j.propos:[];
+    sauveCourses(); sauveRecurrents(); sauveRecettes(); sauveHisto(); sauveMenu(); sauvePropos();
+    ecrire('seme',true);
     fermeModale(); montreSortie(null); rendTout();
     toast('Sauvegarde restaurée','ok');
   };
@@ -1014,7 +1121,7 @@ $('#btnMenu').onclick=()=>ouvreModale(`
     // plutôt qu'avec un confirm() que le navigateur peut bloquer.
     $('#sgRaz').outerHTML='<button class="btn danger" id="sgRaz2">Confirmer l\'effacement</button>';
     $('#sgRaz2').onclick=()=>{
-      courses=[];recurrents=[];recettes=[];histo=[];menu=[];
+      courses=[];recurrents=[];recettes=[];histo=[];menu=[];propos=[];
       try{ Object.keys(localStorage).filter(k=>k.startsWith(LS)).forEach(k=>localStorage.removeItem(k)); }catch(e){}
       semer(); fermeModale(); montreSortie(null); rendTout();
       toast('Tout a été remis à zéro','ok');
@@ -1105,13 +1212,14 @@ if('serviceWorker' in navigator){
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-function rendTout(){ rendCourses(); rendRecettes(); rendMenu(); }
+function rendTout(){ rendCourses(); rendRecettes(); rendMenu(); rendPropos(); }
 function init(){
   $('#chRayon').innerHTML='<option value="">Rayon auto</option>'+
     RAYONS.map(([k,l])=>`<option value="${k}">${esc(l)}</option>`).join('');
   semer();
   // Un menu dont les recettes ont disparu afficherait des lignes vides.
   menu=menu.filter(id=>recettes.some(r=>r.id===id));
+  propos=propos.filter(id=>recettes.some(r=>r.id===id));
   vaVers(page);
   rendTout();
 }

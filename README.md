@@ -23,6 +23,16 @@ téléphone, puis « Ajouter à l'écran d'accueil ».
 - **Le quotidien — restock** : ce qu'on rachète quand le placard est vide, sans
   calendrier. Un appui ajoute, un deuxième retire.
 - « Vider les cochés » reste rattrapable pendant six secondes.
+- **Idées de repas** : « Propose-moi 3 repas » tire trois plats au hasard —
+  mêmes règles de variété que le tirage —, chacun avec son propre bouton pour
+  verser ses ingrédients, et son ↻ pour changer celui-là seulement. Redemander
+  rend trois autres plats. Une idée dont tout est déjà dans la liste se marque
+  « aux courses » : c'est une lecture de la liste, donc retirer un article
+  redonne le bouton.
+
+Sur un écran large, la liste occupe la colonne de gauche et tout ce qui la
+remplit la colonne de droite, qui reste en place quand la liste défile. Sur un
+téléphone, une seule colonne, la saisie au-dessus.
 
 ## Le tirage
 
