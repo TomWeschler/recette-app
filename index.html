@@ -346,6 +346,13 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 .modal-act{display:flex;gap:0.4rem;justify-content:flex-end;margin-top:0.9rem}
 .modal-act .gauche{margin-right:auto}
 
+/* L'état de synchro : une pastille qui dit la vérité, y compris quand elle
+   n'est pas bonne. Elle ne clignote pas — elle change de couleur, c'est tout. */
+#etatSync{letter-spacing:0.12em}
+#etatSync.ok{color:var(--green);border-color:var(--green)}
+#etatSync.actif{color:var(--accent);border-color:var(--accent)}
+#etatSync.err{color:var(--danger);border-color:var(--danger)}
+
 /* ── Le choix du thème ─────────────────────────────────────────────────── */
 .themes{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:0.4rem}
 .theme-btn{display:flex;align-items:center;gap:0.55rem;background:var(--surface2);border:1px solid var(--border);
@@ -382,7 +389,8 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
     <button class="nav-tab" data-page="recettes">Recettes</button>
   </nav>
   <span class="hspace"></span>
-  <button class="hbtn" id="btnMenu" title="Sauvegarde et remise à zéro">···</button>
+  <button class="hbtn" id="etatSync" title="État de la synchronisation">LOCAL</button>
+  <button class="hbtn" id="btnMenu" title="Thème, synchronisation, sauvegarde">···</button>
   <button class="hbtn" id="btnVersion" title="Vérifier la mise à jour">v0.0.0</button>
 </header>
 
@@ -510,7 +518,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 //  ici le seul filet contre un navigateur qu'on vide.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const APP_VERSION='v1.5.0';
+const APP_VERSION='v1.6.0';
 
 // ── Outils ────────────────────────────────────────────────────────────────
 const $=s=>document.querySelector(s);
@@ -633,13 +641,19 @@ let archives   = lire('archives',[]);   // les courses faites, de la plus récen
 let filtreTag  = null;                  // volontairement non persisté : un filtre
                                         // oublié d'hier ferait croire à un
                                         // répertoire à moitié vide.
-const sauveCourses    = ()=>ecrire('courses',courses);
-const sauveRecurrents = ()=>ecrire('recurrents',recurrents);
-const sauveRecettes   = ()=>ecrire('recettes',recettes);
-const sauveHisto      = ()=>ecrire('histo',histo);
-const sauveMenu       = ()=>ecrire('menu',menu);
-const sauvePropos     = ()=>ecrire('propos',propos);
-const sauveArchives   = ()=>ecrire('archives',archives);
+// Chaque sauvegarde locale note la date de la collection concernée et
+// programme un envoi. `syncPlusTard` ne part pas à chaque frappe : il attend
+// que la main se pose, et ne fait rien du tout si aucun classeur n'est réglé.
+function dateEtat(cle){
+  const m=lire('maj_etat',{}); m[cle]=Date.now(); ecrire('maj_etat',m);
+}
+const sauveCourses    = ()=>{ const r=ecrire('courses',courses); syncPlusTard(); return r; };
+const sauveArchives   = ()=>{ const r=ecrire('archives',archives); syncPlusTard(); return r; };
+const sauveRecurrents = ()=>{ const r=ecrire('recurrents',recurrents); dateEtat('recurrents'); syncPlusTard(); return r; };
+const sauveRecettes   = ()=>{ const r=ecrire('recettes',recettes); dateEtat('recettes'); syncPlusTard(); return r; };
+const sauveHisto      = ()=>{ const r=ecrire('histo',histo); dateEtat('histo'); syncPlusTard(); return r; };
+const sauveMenu       = ()=>{ const r=ecrire('menu',menu); dateEtat('menu'); syncPlusTard(); return r; };
+const sauvePropos     = ()=>{ const r=ecrire('propos',propos); dateEtat('propos'); syncPlusTard(); return r; };
 
 // ── Les thèmes ────────────────────────────────────────────────────────────
 // Dix palettes sombres, définies entièrement en CSS ; le JavaScript ne fait
@@ -729,11 +743,14 @@ function ajoute(nom,rayon,src){
   if(dejala){
     // Déjà coché : on le remet à prendre plutôt que d'en créer un doublon
     // sous le premier, qu'on ne verrait pas en magasin.
-    if(dejala.coche){ dejala.coche=false; dejala.qte=1; marqueRecurrent(nom); return {etat:'repris',item:dejala}; }
-    dejala.qte=(dejala.qte|0)+1; marqueRecurrent(nom); return {etat:'incremente',item:dejala};
+    if(dejala.coche){ dejala.coche=false; dejala.qte=1; estampille(dejala); marqueRecurrent(nom); return {etat:'repris',item:dejala}; }
+    dejala.qte=(dejala.qte|0)+1; estampille(dejala); marqueRecurrent(nom); return {etat:'incremente',item:dejala};
   }
-  const item={id:uid(),nom,rayon:rayonOk(rayon||devineRayon(nom)),qte:1,coche:false,
-              src:src||'libre',le:jour()};
+  const item=estampille({id:uid(),nom,rayon:rayonOk(rayon||devineRayon(nom)),qte:1,coche:false,
+              src:src||'libre',le:jour()});
+  // Un article ressorti de sa tombe (même identifiant côté distant) n'a pas à
+  // traîner la pierre d'un homonyme supprimé plus tôt.
+  leveTombes('courses',[item]);
   courses.push(item);
   marqueRecurrent(nom);
   return {etat:'ajoute',item};
@@ -834,10 +851,10 @@ $('#listeCourses').addEventListener('click',e=>{
   const l=b.closest('.item'); if(!l)return;
   const it=courses.find(i=>i.id===l.dataset.id); if(!it)return;
   const act=b.dataset.act;
-  if(act==='coche'){ it.coche=!it.coche; if(it.coche)marqueRecurrent(it.nom); }
-  else if(act==='plus') it.qte=(it.qte|0)+1;
-  else if(act==='moins'){ it.qte=(it.qte|0)-1; if(it.qte<1)courses=courses.filter(i=>i.id!==it.id); }
-  else if(act==='sup') courses=courses.filter(i=>i.id!==it.id);
+  if(act==='coche'){ it.coche=!it.coche; if(it.coche)marqueRecurrent(it.nom); estampille(it); }
+  else if(act==='plus'){ it.qte=(it.qte|0)+1; estampille(it); }
+  else if(act==='moins'){ it.qte=(it.qte|0)-1; estampille(it); if(it.qte<1)oteCourses([it]); }
+  else if(act==='sup') oteCourses([it]);
   sauveCourses(); rendCourses();
 });
 
@@ -861,7 +878,7 @@ function clicPuce(e){
   if(dejala&&!dejala.coche){
     // Deuxième appui sur une puce déjà prise : on retire, plutôt que
     // d'empiler des quantités qu'on n'a pas demandées.
-    courses=courses.filter(i=>i.id!==dejala.id);
+    oteCourses([dejala]);
     sauveCourses(); rendCourses(); toast(`${r.nom} retiré de la liste`);
     return;
   }
@@ -882,12 +899,13 @@ $('#btnToutHebdo').onclick=()=>{
 $('#btnViderCoches').onclick=()=>{
   const partis=courses.filter(i=>i.coche);
   if(!partis.length)return;
-  courses=courses.filter(i=>!i.coche);
+  oteCourses(partis);
   sauveCourses(); rendCourses();
   // Vider est irréversible et se fait souvent d'un pouce distrait : on laisse
   // six secondes pour revenir en arrière.
   toast(`${partis.length} article${partis.length>1?'s':''} retiré${partis.length>1?'s':''}`,'ok',
-    ['Annuler',()=>{ courses=courses.concat(partis); sauveCourses(); rendCourses(); }]);
+    ['Annuler',()=>{ leveTombes('courses',partis); courses=courses.concat(partis);
+                     sauveCourses(); rendCourses(); }]);
 };
 
 // ── Trois idées de repas, à côté de la liste ──────────────────────────────
@@ -1005,6 +1023,30 @@ function litIntention(){
   ouvreEclair();
 }
 
+// ── Retirer, sans que l'autre appareil le ressuscite ──────────────────────
+// Un article supprimé ici existe encore là-bas : si on se contentait de le
+// retirer de la liste, la synchro suivante le rapporterait. On laisse donc une
+// pierre tombale, que la fusion sait lire. Tout passe par ces quatre
+// fonctions — un `filter` posé à la main quelque part rouvrirait le trou.
+const tombes=cle=>lire('tombes_'+cle,[]);
+function poseTombes(cle,items){
+  const t=tombes(cle).filter(x=>!items.some(i=>i.id===x.id));
+  items.forEach(i=>t.push(Object.assign({},i,{maj:maintenant(),suppr:true})));
+  ecrire('tombes_'+cle,t);
+}
+// Annuler une suppression : la pierre part, et ce qui revient est réestampillé
+// — sinon la version d'en face, plus récente, l'effacerait de nouveau.
+function leveTombes(cle,items){
+  ecrire('tombes_'+cle,tombes(cle).filter(x=>!items.some(i=>i.id===x.id)));
+  items.forEach(i=>i.maj=maintenant());
+}
+function oteCourses(items){
+  if(!items.length)return;
+  const ids=new Set(items.map(i=>i.id));
+  courses=courses.filter(i=>!ids.has(i.id));
+  poseTombes('courses',items);
+}
+
 // ── Une seule liste courante, et derrière elle l'historique ───────────────
 // « Course faite » classe la liste entière et en ouvre une vide : il n'y a
 // jamais deux listes courantes, c'est ce qui rend le bouton lisible. Ce qui
@@ -1018,8 +1060,8 @@ function courseFaite(){
   const nonCoches=listeAvant.filter(i=>!i.coche);
   const entree={id:uid(),le:new Date().toISOString(),
                 items:listeAvant.map(i=>({nom:i.nom,rayon:rayonOk(i.rayon),qte:i.qte|0,coche:!!i.coche,src:i.src}))};
-  archives=[entree,...archives].slice(0,MAX_ARCHIVES);
-  courses=[];
+  archives=[estampille(entree),...archives].slice(0,MAX_ARCHIVES);
+  oteCourses(listeAvant);
   sauveArchives(); sauveCourses(); rendCourses(); rendHistorique();
   // Ce qui n'a pas été coché n'a pas été trouvé — ou pas cherché. C'est classé
   // avec le reste, parce que l'archive doit dire la vérité sur cette course ;
@@ -1028,13 +1070,15 @@ function courseFaite(){
   if(nonCoches.length)
     toast(`Course classée — ${nonCoches.length} non coché${nonCoches.length>1?'s':''}`,'ok',
       [`Remettre les non cochés`,()=>{
-        nonCoches.forEach(i=>ajoute(i.nom,i.rayon,i.src));
+        nonCoches.forEach(i=>ajoute(i.nom,i.rayon,i.src));   // nouveaux identifiants, donc pas de tombe
         sauveCourses(); sauveRecurrents(); rendCourses();
       }]);
   else
     toast(`Course classée — ${listeAvant.length} article${listeAvant.length>1?'s':''}`,'ok',
       ['Annuler',()=>{
         archives=archives.filter(a=>a.id!==entree.id);
+        poseTombes('archives',[entree]);
+        leveTombes('courses',listeAvant);
         courses=listeAvant;
         sauveArchives(); sauveCourses(); rendCourses(); rendHistorique();
       }]);
@@ -1078,8 +1122,10 @@ $('#listeHisto').addEventListener('click',e=>{
   if(e.target.closest('[data-sup]')){
     const place=archives.indexOf(a);
     archives=archives.filter(x=>x.id!==a.id);
+    poseTombes('archives',[a]);
     sauveArchives(); rendHistorique();
     toast('Course supprimée de l\'historique','ok',['Annuler',()=>{
+      leveTombes('archives',[a]);
       archives.splice(place<0?archives.length:place,0,a);
       sauveArchives(); rendHistorique();
     }]);
@@ -1455,11 +1501,25 @@ $('#btnMenu').onclick=()=>ouvreModale(`
         <i style="background:var(--surface2)"></i><i style="background:var(--accent)"></i></span>
       ${esc(nom)}</button>`).join('')}
   </div>
+  <h2 style="margin-top:1rem">Synchronisation</h2>
+  <p style="font-size:0.95rem;color:var(--text-mid);line-height:1.55;margin-bottom:0.7rem" id="syncDit"></p>
+  <div class="champ"><label for="syCli">Identifiant client Google (OAuth)</label>
+    <input id="syCli" value="${esc(sync.clientId)}" placeholder="…apps.googleusercontent.com"></div>
+  <div class="champ"><label for="syCla">Identifiant du classeur</label>
+    <input id="syCla" value="${esc(sync.classeur)}" placeholder="collé depuis l'URL du classeur"></div>
+  <div class="modal-act" style="justify-content:flex-start;flex-wrap:wrap;margin-bottom:0.4rem">
+    <button class="btn primaire" id="syCo">Connecter</button>
+    <button class="btn" id="syNow">Synchroniser</button>
+    <button class="btn" id="syCreer">Créer un classeur</button>
+    <button class="btn danger" id="syOff">Délier</button>
+  </div>
+
   <h2 style="margin-top:1rem">Sauvegarde</h2>
   <p style="font-size:0.95rem;color:var(--text-mid);line-height:1.55;margin-bottom:0.8rem">
-    Tout est gardé dans ce navigateur, et nulle part ailleurs : chaque appareil a
-    donc sa propre liste, et vider les données du site efface la sienne. Le fichier
-    JSON est la seule copie, et le seul moyen de passer d'un appareil à l'autre.</p>
+    Sans classeur relié, tout reste dans ce navigateur : chaque appareil a sa
+    propre liste, et vider les données du site efface la sienne. Le fichier JSON
+    est une copie complète, indépendante de Google — à garder même une fois la
+    synchronisation en place.</p>
   <div class="modal-act" style="justify-content:flex-start;flex-wrap:wrap">
     <button class="btn" id="sgExp">Exporter</button>
     <button class="btn" id="sgImp">Importer</button>
@@ -1473,6 +1533,48 @@ $('#btnMenu').onclick=()=>ouvreModale(`
     // On ne referme pas : essayer les dix d'affilée est exactement l'usage.
     $$('#choixThemes .theme-btn').forEach(x=>x.classList.toggle('on',x===b));
   };
+  // Les deux identifiants sont retenus à la frappe : on peut coller l'un,
+  // partir chercher l'autre, et revenir sans rien perdre.
+  const litChamps=()=>{ sync.clientId=$('#syCli').value.trim();
+                        sync.classeur=$('#syCla').value.trim(); sauveSync(); };
+  const ditSync=()=>{
+    $('#syncDit').textContent=!sync.clientId
+      ? "Rien n'est synchronisé : les données restent dans ce navigateur. Colle un identifiant client Google pour relier cet appareil au classeur partagé."
+      : !sync.classeur
+      ? "Connecte-toi, puis « Créer un classeur » — ou colle l'identifiant d'un classeur déjà partagé avec toi."
+      : jeton ? "Cet appareil est relié. Chaque modification part dans le classeur, et ce que l'autre appareil écrit revient ici."
+              : "Classeur réglé, mais pas encore connecté à Google sur cet appareil.";
+  };
+  ditSync();
+  $('#syCli').oninput=$('#syCla').oninput=()=>{ litChamps(); ditSync(); };
+  $('#syCo').onclick=()=>{ litChamps(); if(!sync.clientId){ toast('Il manque l\'identifiant client','err'); return; }
+                           chargeGIS(); demandeJeton(false); ditSync(); };
+  $('#syNow').onclick=async()=>{ litChamps();
+    if(!jeton){ demandeJeton(false); return; }
+    const ok=await synchronise(true);
+    toast(ok?'Synchronisé':'Synchronisation impossible — voir la pastille',ok?'ok':'err'); };
+  $('#syCreer').onclick=async()=>{
+    litChamps();
+    if(!jeton){ toast('Connecte-toi d\'abord','err'); demandeJeton(false); return; }
+    try{
+      const id=await ssCreer();
+      sync.classeur=id; sauveSync(); $('#syCla').value=id; ditSync();
+      await synchronise(true);
+      // On donne le lien : c'est par le partage Drive de CE classeur, et par
+      // lui seul, que l'autre personne obtient l'accès.
+      toast('Classeur créé — partage-le depuis Drive','ok',
+        ['Ouvrir',()=>window.open('https://docs.google.com/spreadsheets/d/'+id,'_blank','noopener')]);
+    }catch(e){ toast('Création impossible : '+e.message,'err'); }
+  };
+  $('#syOff').onclick=()=>{
+    // Délier ne touche à rien dans le classeur : on coupe le lien de CET
+    // appareil, les données restent des deux côtés.
+    sync={clientId:'',classeur:'',compte:''}; sauveSync(); jeton=null;
+    $('#syCli').value=''; $('#syCla').value=''; ditSync();
+    etatSync('','LOCAL','Aucun classeur configuré');
+    toast('Appareil délié — les données restent ici et dans le classeur','ok');
+  };
+
   $('#sgExp').onclick=exporte;
   $('#sgImp').onclick=()=>$('#sgFic').click();
   $('#sgFic').onchange=e=>{ if(e.target.files[0])importe(e.target.files[0]); };
@@ -1491,6 +1593,288 @@ $('#btnMenu').onclick=()=>ouvreModale(`
     };
   };
 });
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  SYNCHRONISATION — un classeur Google partagé à deux
+// ═══════════════════════════════════════════════════════════════════════════
+// L'app a longtemps vécu dans le seul localStorage du navigateur : chaque
+// appareil avait sa liste, et ouvrir l'app sur le téléphone ne montrait rien de
+// ce qui avait été saisi sur l'ordinateur. À deux dans un magasin, c'est pire
+// qu'inutile — il faut que ce qu'elle coche s'efface sur mon écran.
+//
+// Le classeur est la vérité commune ; le localStorage devient un cache, qui
+// reste seul maître quand le réseau manque. Trois règles tiennent l'ensemble :
+//
+//   1. Chaque ligne porte une date de modification (`maj`). Entre deux
+//      versions d'une même ligne, la plus récente gagne. C'est grossier, mais
+//      c'est prévisible — et à deux sur une liste de courses, deux personnes
+//      touchent rarement le MÊME article dans la même seconde.
+//   2. Supprimer ne retire pas la ligne : ça pose une pierre tombale
+//      (`suppr`). Sans elle, l'autre appareil, qui a encore l'article, le
+//      ressusciterait à la synchro suivante. Les pierres sont balayées au bout
+//      d'un mois.
+//   3. On ne pousse JAMAIS sans avoir relu et fusionné juste avant. Une
+//      écriture est donc toujours « l'état commun + mes changements », jamais
+//      « mon état à la place du tien ».
+//
+// Tout ce qui touche au réseau passe par quatre fonctions (ssLire, ssEcrire,
+// ssCreer, ssOnglets) : les épreuves les remplacent par une mémoire locale et
+// éprouvent la fusion, qui est l'endroit où les vraies erreurs se cachent.
+
+const SS_ONGLETS=['courses','archives','etat'];
+const SS_ENTETES={
+  courses:['id','nom','rayon','qte','coche','src','le','maj','suppr'],
+  archives:['id','le','items','maj','suppr'],
+  etat:['cle','valeur','maj']
+};
+// Les collections qui voyagent en bloc : elles changent rarement, et une
+// fusion ligne à ligne n'y apporterait rien.
+const SS_ETAT=['recurrents','recettes','histo','menu','propos'];
+const SS_TOMBE=30*864e5;         // un mois : au-delà, la pierre tombale a fait son office
+const SS_PERIODE=45000;          // relecture régulière tant que l'app est visible
+
+let sync=lire('sync',{clientId:'',classeur:'',compte:''});
+const sauveSync=()=>ecrire('sync',sync);
+let jeton=null, gisPret=false, tokenClient=null, authMuette=false;
+let syncEnCours=false, syncSale=false, syncMinuteur=null, syncDernier=0;
+
+const maintenant=()=>Date.now();
+// Toute écriture locale estampille ce qu'elle touche : c'est cette date qui
+// arbitre les conflits. Sans elle, le dernier à ouvrir l'app gagnerait.
+function estampille(o){ o.maj=maintenant(); return o; }
+
+function etatSync(classe,texte,titre){
+  const b=$('#etatSync');
+  b.className='hbtn'+(classe?' '+classe:'');
+  b.textContent=texte;
+  if(titre)b.title=titre;
+}
+function syncConfigure(){ return !!(sync.clientId&&sync.classeur); }
+
+// ── Le jeton ──────────────────────────────────────────────────────────────
+function chargeGIS(){
+  if(gisPret||!sync.clientId)return;
+  const s=document.createElement('script');
+  s.src='https://accounts.google.com/gsi/client';
+  s.onload=()=>{ gisPret=true; initJeton(); demandeJeton(true); };
+  s.onerror=()=>etatSync('err','HORS LIGNE','Google est injoignable');
+  document.head.appendChild(s);
+}
+function initJeton(){
+  if(!window.google||!google.accounts)return;
+  tokenClient=google.accounts.oauth2.initTokenClient({
+    client_id:sync.clientId,
+    // spreadsheets : lire et écrire le classeur partagé. drive.file : pouvoir
+    // le créer. Aucun des deux ne donne accès au reste du Drive.
+    scope:'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file',
+    login_hint:sync.compte||'',
+    callback:resp=>{
+      if(resp.error){
+        authMuette=true; jeton=null;
+        etatSync('err','CONNEXION','Google a refusé la connexion — ouvre les réglages');
+        return;
+      }
+      authMuette=false; jeton=resp.access_token;
+      etatSync('actif','SYNC…');
+      synchronise(true);
+    }
+  });
+}
+// `muette` : on tente d'abord sans rien afficher. Le écran de Google ne
+// s'impose qu'à la première fois, ou si l'accès a été révoqué.
+function demandeJeton(muette){
+  if(!sync.clientId)return;
+  if(!gisPret){ chargeGIS(); return; }
+  if(!tokenClient)initJeton();
+  if(!tokenClient)return;
+  tokenClient.requestAccessToken({prompt:muette&&!authMuette?'':'consent'});
+}
+
+// ── Le transport ──────────────────────────────────────────────────────────
+// Quatre fonctions, et elles seules, parlent à Google. Une épreuve les
+// remplace pour éprouver la fusion sans réseau ni compte.
+async function ssAppel(url,options){
+  const o=options||{};
+  o.headers=Object.assign({Authorization:'Bearer '+jeton},o.headers||{});
+  const r=await fetch(url,o);
+  if(r.status===401||r.status===403){
+    jeton=null; demandeJeton(true);
+    throw new Error('jeton');
+  }
+  if(!r.ok)throw new Error('http '+r.status);
+  return r.json();
+}
+const SS_BASE='https://sheets.googleapis.com/v4/spreadsheets';
+async function ssLire(onglet){
+  const j=await ssAppel(`${SS_BASE}/${sync.classeur}/values/${onglet}!A:Z`);
+  return j.values||[];
+}
+async function ssEcrire(onglet,lignes){
+  await ssAppel(`${SS_BASE}/${sync.classeur}/values/${onglet}!A:Z:clear`,{method:'POST',
+    headers:{'Content-Type':'application/json'},body:'{}'});
+  await ssAppel(`${SS_BASE}/${sync.classeur}/values/${onglet}!A1?valueInputOption=RAW`,
+    {method:'PUT',headers:{'Content-Type':'application/json'},
+     body:JSON.stringify({values:lignes})});
+}
+// Un classeur vierge n'a qu'un onglet « Feuille 1 » : on pose les nôtres, en
+// ignorant ceux qui existent déjà — la fonction doit pouvoir être rappelée.
+async function ssOnglets(){
+  const j=await ssAppel(`${SS_BASE}/${sync.classeur}?fields=sheets.properties.title`);
+  const la=(j.sheets||[]).map(s=>s.properties.title);
+  const manquants=SS_ONGLETS.filter(o=>!la.includes(o));
+  if(!manquants.length)return;
+  await ssAppel(`${SS_BASE}/${sync.classeur}:batchUpdate`,{method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({requests:manquants.map(t=>({addSheet:{properties:{title:t}}}))})});
+}
+async function ssCreer(){
+  const j=await ssAppel(SS_BASE,{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({properties:{title:'Recette App — données'},
+                         sheets:SS_ONGLETS.map(t=>({properties:{title:t}}))})});
+  return j.spreadsheetId;
+}
+
+// ── Les conversions ───────────────────────────────────────────────────────
+const versLigne={
+  courses:i=>[i.id,i.nom,rayonOk(i.rayon),String(i.qte|0),i.coche?'1':'',i.src||'libre',i.le||'',
+              String(i.maj||0),i.suppr?'1':''],
+  archives:a=>[a.id,a.le||'',JSON.stringify(a.items||[]),String(a.maj||0),a.suppr?'1':'']
+};
+const depuisLigne={
+  courses:l=>({id:l[0],nom:l[1],rayon:rayonOk(l[2]),qte:parseInt(l[3],10)||1,coche:l[4]==='1',
+               src:l[5]||'libre',le:l[6]||'',maj:parseInt(l[7],10)||0,suppr:l[8]==='1'}),
+  archives:l=>{ let items=[]; try{ items=JSON.parse(l[2]||'[]'); }catch(e){}
+                return {id:l[0],le:l[1]||'',items,maj:parseInt(l[3],10)||0,suppr:l[4]==='1'}; }
+};
+// La première ligne du classeur est l'en-tête : lisible par un humain qui
+// ouvrirait le classeur, et ignorée à la lecture.
+const sansEntete=(onglet,lignes)=>
+  lignes.filter(l=>l&&l.length&&l[0]&&l[0]!==SS_ENTETES[onglet][0]);
+
+// ── La fusion ─────────────────────────────────────────────────────────────
+// Le cœur de l'affaire, et le seul endroit qui mérite des épreuves sévères.
+// Rend la liste fusionnée ET dit si le local avait quelque chose à pousser.
+function fusionne(local,distant){
+  const par=new Map();
+  distant.forEach(d=>par.set(d.id,d));
+  let aPousser=false;
+  local.forEach(l=>{
+    const d=par.get(l.id);
+    if(!d){ par.set(l.id,l); aPousser=true; return; }
+    // À égalité de date, on garde le distant : deux appareils qui se
+    // renvoient indéfiniment deux versions « aussi récentes » ne
+    // convergeraient jamais.
+    if((l.maj||0)>(d.maj||0)){ par.set(l.id,l); aPousser=true; }
+  });
+  // Les pierres tombales ont une durée de vie : passé un mois, personne ne
+  // détient plus l'article qu'elles annulent.
+  const seuil=maintenant()-SS_TOMBE;
+  const tout=[...par.values()].filter(x=>!(x.suppr&&(x.maj||0)<seuil));
+  if(tout.length!==par.size)aPousser=true;
+  return {tout,aPousser};
+}
+
+// ── Le va-et-vient ────────────────────────────────────────────────────────
+// Une seule passe : on lit tout, on fusionne, on écrit ce qui a bougé. Elle ne
+// se chevauche jamais avec elle-même ; une demande arrivée pendant une passe
+// est simplement notée et rejouée à la fin.
+async function synchronise(force){
+  if(!syncConfigure()||!jeton){ if(!syncConfigure())etatSync('','LOCAL','Aucun classeur configuré'); return false; }
+  if(syncEnCours){ syncSale=true; return false; }
+  if(!navigator.onLine){ etatSync('err','HORS LIGNE','Les changements partiront au retour du réseau'); syncSale=true; return false; }
+  syncEnCours=true;
+  etatSync('actif','SYNC…');
+  try{
+    await ssOnglets();
+
+    // 1. La liste de courses, ligne à ligne — c'est elle qu'on touche à deux.
+    const distC=sansEntete('courses',await ssLire('courses')).map(depuisLigne.courses);
+    const locC=courses.concat(lire('tombes_courses',[]));
+    const fC=fusionne(locC,distC);
+    if(fC.aPousser)await ssEcrire('courses',[SS_ENTETES.courses].concat(fC.tout.map(versLigne.courses)));
+    courses=fC.tout.filter(i=>!i.suppr);
+    ecrire('tombes_courses',fC.tout.filter(i=>i.suppr));
+
+    // 2. L'historique des courses faites : même mécanique, ligne à ligne.
+    const distA=sansEntete('archives',await ssLire('archives')).map(depuisLigne.archives);
+    const fA=fusionne(archives.concat(lire('tombes_archives',[])),distA);
+    if(fA.aPousser)await ssEcrire('archives',[SS_ENTETES.archives].concat(fA.tout.map(versLigne.archives)));
+    archives=fA.tout.filter(a=>!a.suppr)
+      .sort((a,b)=>String(b.le).localeCompare(String(a.le))).slice(0,MAX_ARCHIVES);
+    ecrire('tombes_archives',fA.tout.filter(a=>a.suppr));
+
+    // 3. Le reste, en bloc par clé : récurrents, recettes, tirages, idées.
+    const distE=new Map(sansEntete('etat',await ssLire('etat'))
+      .map(l=>[l[0],{valeur:l[1],maj:parseInt(l[2],10)||0}]));
+    const majE=lire('maj_etat',{});
+    const sortie=[]; let pousserE=false;
+    SS_ETAT.forEach(cle=>{
+      const d=distE.get(cle), local=JSON.stringify(litEtat(cle)), mLoc=majE[cle]||0;
+      if(d&&d.maj>mLoc){
+        try{ const v=JSON.parse(d.valeur);
+             if(Array.isArray(v)){ poseEtat(cle,v); majE[cle]=d.maj; } }catch(e){}
+        sortie.push([cle,d.valeur,String(d.maj)]);
+      }else{
+        sortie.push([cle,local,String(mLoc||maintenant())]);
+        if(!d||d.valeur!==local)pousserE=true;
+      }
+    });
+    if(pousserE)await ssEcrire('etat',[SS_ENTETES.etat].concat(sortie));
+    ecrire('maj_etat',majE);
+
+    sauveCourses(); sauveArchives();
+    rendTout();
+    syncDernier=maintenant();
+    etatSync('ok','À JOUR','Dernière synchro : '+new Date(syncDernier).toLocaleTimeString('fr-FR'));
+    return true;
+  }catch(e){
+    if(String(e.message)==='jeton')etatSync('err','CONNEXION','Reconnexion à Google…');
+    else etatSync('err','ERREUR',String(e.message));
+    return false;
+  }finally{
+    syncEnCours=false;
+    if(syncSale){ syncSale=false; setTimeout(()=>synchronise(),1200); }
+  }
+}
+// Les collections qui voyagent en bloc, lues et posées nommément : une table
+// de correspondance explicite vaut mieux qu'un accès dynamique au nom.
+function litEtat(cle){
+  return cle==='recurrents'?recurrents:cle==='recettes'?recettes
+        :cle==='histo'?histo:cle==='menu'?menu:cle==='propos'?propos:[];
+}
+function poseEtat(cle,v){
+  if(cle==='recurrents')recurrents=v;
+  else if(cle==='recettes')recettes=v;
+  else if(cle==='histo')histo=v;
+  else if(cle==='menu')menu=v;
+  else if(cle==='propos')propos=v;
+  ecrire(cle,v);
+}
+// Toute modification locale appelle ceci : on ne part pas au réseau à chaque
+// frappe, on attend que la main se pose.
+function syncPlusTard(){
+  if(!syncConfigure())return;
+  clearTimeout(syncMinuteur);
+  syncMinuteur=setTimeout(()=>synchronise(),1500);
+}
+
+// Un appui sur la pastille force une relecture : c'est l'échappatoire quand on
+// veut être SÛR de voir ce que l'autre vient d'ajouter.
+$('#etatSync').onclick=()=>{
+  if(!syncConfigure()){ $('#btnMenu').click(); return; }
+  if(!jeton){ demandeJeton(false); return; }
+  synchronise(true);
+};
+// Revenir sur l'app est le moment où l'on veut voir l'état de l'autre : c'est
+// là qu'on relit, plutôt qu'en interrogeant Google toutes les cinq secondes.
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden&&syncConfigure()&&maintenant()-syncDernier>5000)synchronise();
+});
+window.addEventListener('focus',()=>{ if(syncConfigure()&&maintenant()-syncDernier>5000)synchronise(); });
+window.addEventListener('online',()=>{ if(syncConfigure())synchronise(true); });
+window.addEventListener('offline',()=>{ if(syncConfigure())etatSync('err','HORS LIGNE','Les changements partiront au retour du réseau'); });
+setInterval(()=>{ if(!document.hidden&&syncConfigure())synchronise(); },SS_PERIODE);
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  MISE À JOUR — reprise du kanban : recharger, purger, puis le DIRE
@@ -1587,6 +1971,10 @@ function init(){
   vaVers(page);
   rendTout();
   litIntention();
+  // La synchro se met en route toute seule quand elle est réglée ; sinon la
+  // pastille dit « LOCAL » et rien ne part nulle part.
+  if(syncConfigure()){ etatSync('actif','SYNC…'); chargeGIS(); }
+  else etatSync('','LOCAL','Aucun classeur configuré — menu ··· pour en relier un');
 }
 init();
 </script>

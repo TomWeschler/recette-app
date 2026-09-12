@@ -78,11 +78,51 @@ reconstruit rien, le navigateur recalcule les variables. Il est relu avant la
 feuille de style, donc aucun clignotement au lancement, et il survit à
 « Tout effacer ».
 
+## Synchronisation — un classeur Google partagé
+
+Sans réglage, l'app vit dans le seul `localStorage` : chaque appareil a sa
+liste. Reliée à un classeur Google, elle devient partageable à plusieurs — le
+classeur est la vérité commune, le `localStorage` un cache qui reste seul maître
+quand le réseau manque.
+
+**Réglage, une fois :** menu « ··· » → Synchronisation. Coller un identifiant
+client OAuth (Google Cloud → API et services → Identifiants → ID client OAuth
+pour application Web, avec `https://<compte>.github.io` en origine autorisée),
+puis « Connecter », puis « Créer un classeur ». Sur le deuxième appareil : même
+identifiant client, et l'identifiant du classeur, que l'on lit dans son URL.
+Rien de tout cela n'est dans le dépôt : les deux identifiants sont saisis dans
+l'app et gardés localement.
+
+**Qui peut lire :** le classeur est un fichier Drive ordinaire. Seuls les
+comptes avec qui il est partagé y accèdent — ni le code public, ni
+l'identifiant client ne donnent le moindre accès aux données. Laisser l'écran
+de consentement en mode « Test » ferme la porte une seconde fois : seuls les
+comptes listés comme testeurs peuvent autoriser l'app.
+
+**Comment les conflits sont tranchés :**
+
+1. chaque ligne porte sa date de modification ; entre deux versions d'une même
+   ligne, la plus récente gagne ;
+2. supprimer ne retire pas la ligne, ça pose une **pierre tombale** — sans
+   elle, l'autre appareil, qui a encore l'article, le ressusciterait à la
+   synchro suivante. Elles sont balayées au bout d'un mois ;
+3. on ne pousse **jamais** sans avoir relu et fusionné juste avant : une
+   écriture est toujours « l'état commun + mes changements », jamais « mon état
+   à la place du tien ».
+
+La liste de courses et l'historique voyagent ligne à ligne — c'est ce qu'on
+touche à deux. Les récurrents, les recettes, les tirages et les idées voyagent
+en bloc : ils changent rarement, une fusion ligne à ligne n'y apporterait rien.
+
+La synchro part à l'ouverture, au retour sur l'app, au retour du réseau, toutes
+les 45 secondes tant que l'app est visible, et une seconde et demie après chaque
+modification. Un appui sur la pastille de l'en-tête la force.
+
 ## Sauvegarde
 
-Tout vit dans `localStorage`, et nulle part ailleurs : il n'y a pas de serveur.
-Vider les données du site efface la liste et les recettes. Le menu « ··· »
-exporte et réimporte un fichier JSON — c'est la seule copie.
+Le menu « ··· » exporte et réimporte un fichier JSON. C'est la seule copie
+tant qu'aucun classeur n'est relié — et une copie indépendante de Google
+ensuite, qu'il reste sage de garder.
 
 ## Les épreuves
 
@@ -91,11 +131,13 @@ python3 -m http.server 8899 --bind 127.0.0.1 &   # depuis la racine du dépôt
 npm install playwright --no-audit --no-fund      # une fois
 node tests/courses.js
 node tests/tirage.js
+node tests/synchro.js
 ```
 
 | Fichier | Sujet |
 |---|---|
 | `tests/courses.js` | Le fonds de départ, le dédoublonnage, les rayons devinés, les propositions hebdo, le restock, l'annulation, la persistance. |
+| `tests/synchro.js` | La synchronisation à deux : premier envoi, retour du classeur, conflits, pierres tombales, hors ligne, deux appareils sur le même classeur. |
 | `tests/tirage.js` | L'écart aux derniers tirages, le poids de l'ancienneté, les petits répertoires, le filtre, le menu, les ingrédients versés, la suppression. |
 
 Le navigateur est cherché dans `/opt/pw-browsers/chromium-1194/…` ; sur une
