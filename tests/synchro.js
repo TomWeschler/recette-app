@@ -282,7 +282,89 @@ const double=await A.evaluate(async()=>{
 chk('Une seconde passe lancée pendant la première ne part pas',
     double.un===true&&double.deux===false,JSON.stringify(double));
 
-const errs=[...A.errs,...B.errs];
+console.log('=== 10. LA CONNEXION SE FAIT À L\'OUVERTURE ===');
+// Une page fraîche, telle qu'elle s'ouvre vraiment : rien n'est détourné avant
+// de regarder ce qu'elle a tenté toute seule.
+const F=await b.newContext({viewport:{width:430,height:930},locale:'fr-FR'});
+const f=await F.newPage();
+const errsF=[];f.on('pageerror',e=>errsF.push('F: '+String(e).split('\n')[0]));
+await f.goto(BASE,{waitUntil:'domcontentloaded'});
+await f.waitForFunction(()=>typeof synchronise==='function');
+const ouverture=await f.evaluate(()=>({
+  configure:syncConfigure(),
+  client:/apps\.googleusercontent\.com$/.test(sync.clientId),
+  classeur:!!sync.classeur,
+  script:!!document.querySelector('script[src*="accounts.google.com"]'),
+  pastille:document.getElementById('etatSync').textContent}));
+chk('Un appareil neuf est configuré sans qu\'on règle rien',
+    ouverture.configure&&ouverture.client&&ouverture.classeur,JSON.stringify(ouverture));
+chk('…et la connexion à Google est demandée dès l\'ouverture',
+    ouverture.script===true,JSON.stringify(ouverture));
+chk('…la pastille le dit',/SYNC|HORS LIGNE|CONNEXION|À JOUR/.test(ouverture.pastille),ouverture.pastille);
+
+// Le jeton arrive : on vérifie ce que l'app en fait, en se mettant à la place
+// de Google plutôt qu'en l'appelant.
+const jetonRecu=await f.evaluate(async()=>{
+  window.DEMANDES=[];
+  window.google={accounts:{oauth2:{initTokenClient:o=>{ window.OPTS=o;
+    return {requestAccessToken:p=>window.DEMANDES.push(p&&p.prompt)}; }}}};
+  gisPret=true; initJeton();
+  ssOnglets=async()=>{}; ssLire=async()=>[]; ssEcrire=async()=>{};
+  OPTS.callback({access_token:'jeton-abc',expires_in:3600});
+  await new Promise(r=>setTimeout(r,300));
+  return {jeton,pastille:document.getElementById('etatSync').textContent,
+          portee:OPTS.scope,client:OPTS.client_id===sync.clientId};
+});
+chk('Le jeton reçu est gardé et la synchro part',
+    jetonRecu.jeton==='jeton-abc'&&/À JOUR/.test(jetonRecu.pastille),JSON.stringify(jetonRecu));
+chk('…avec la portée la plus étroite qui suffise',
+    /spreadsheets/.test(jetonRecu.portee)&&/drive\.file/.test(jetonRecu.portee)
+    &&!/drive['"\s]|drive$/.test(jetonRecu.portee.replace('drive.file','')),jetonRecu.portee);
+
+// Sans jeton, chaque déclencheur redemande la connexion au lieu de renoncer.
+const relance=await f.evaluate(async()=>{
+  jeton=null; DEMANDES.length=0;
+  const s1=await synchronise(true);
+  reprend();
+  window.dispatchEvent(new Event('online'));
+  document.dispatchEvent(new Event('visibilitychange'));
+  return {s1,demandes:DEMANDES.length,muettes:DEMANDES.every(p=>p==='')};
+});
+chk('Sans jeton, la synchro redemande la connexion au lieu de renoncer',
+    relance.s1===false&&relance.demandes>=3,JSON.stringify(relance));
+chk('…en silence, sans fenêtre qui surgit',relance.muettes===true,JSON.stringify(relance));
+
+// Le refus de Google se dit une fois, et l'appui sur la pastille réessaie
+// avec le consentement — c'est le geste que le navigateur attend.
+const refus=await f.evaluate(async()=>{
+  DEMANDES.length=0; document.getElementById('toasts').innerHTML='';
+  OPTS.callback({error:'consent_required'});
+  const dit=(document.querySelector('#toasts .toast')||{}).textContent||'';
+  const pastille=document.getElementById('etatSync').textContent;
+  OPTS.callback({error:'consent_required'});   // deuxième refus : pas de nouveau message
+  const toasts=document.querySelectorAll('#toasts .toast').length;
+  document.getElementById('etatSync').click();
+  return {dit,pastille,toasts,prompt:DEMANDES[DEMANDES.length-1]};
+});
+chk('Un refus de Google est dit, une seule fois',
+    /[Cc]onnexion/.test(refus.dit)&&refus.toasts===1,JSON.stringify(refus));
+chk('…la pastille invite à toucher',/CONNEXION/.test(refus.pastille),refus.pastille);
+chk('…et l\'appui redemande avec consentement',refus.prompt==='consent',JSON.stringify(refus));
+
+// Un jeton périmé (401) est remplacé sans qu'on s'en aperçoive.
+const perime=await f.evaluate(async()=>{
+  jeton='vieux'; DEMANDES.length=0;
+  const vraiFetch=window.fetch;
+  window.fetch=async()=>({status:401,ok:false,json:async()=>({})});
+  let attrape=null;
+  try{ await ssAppel('https://exemple.test/x'); }catch(e){ attrape=e.message; }
+  window.fetch=vraiFetch;
+  return {attrape,jeton,demandes:DEMANDES.length};
+});
+chk('Un jeton périmé est jeté et redemandé aussitôt',
+    perime.attrape==='jeton'&&perime.jeton===null&&perime.demandes===1,JSON.stringify(perime));
+
+const errs=[...A.errs,...B.errs,...errsF];
 chk('Aucune erreur JS',errs.length===0,errs.join(' | '));
 
 await b.close();

@@ -518,7 +518,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 //  ici le seul filet contre un navigateur qu'on vide.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const APP_VERSION='v1.7.0';
+const APP_VERSION='v1.7.1';
 
 // ── Outils ────────────────────────────────────────────────────────────────
 const $=s=>document.querySelector(s);
@@ -1676,6 +1676,7 @@ if(!sync.clientId)sync.clientId=SS_CLIENT_DEFAUT;
 if(!sync.classeur)sync.classeur=SS_CLASSEUR_DEFAUT;
 const sauveSync=()=>ecrire('sync',sync);
 let jeton=null, gisPret=false, tokenClient=null, authMuette=false;
+let jetonMinuteur=null, connexionDite=false;
 let syncEnCours=false, syncSale=false, syncMinuteur=null, syncDernier=0, syncFaite=false;
 
 const maintenant=()=>Date.now();
@@ -1712,11 +1713,22 @@ function initJeton(){
     login_hint:sync.compte||'',
     callback:resp=>{
       if(resp.error){
+        // Le silence a échoué : il faut un geste de la personne, parce qu'un
+        // navigateur n'ouvre pas la fenêtre de Google sans être touché. On le
+        // dit une fois, pas à chaque tentative.
         authMuette=true; jeton=null;
-        etatSync('err','CONNEXION','Google a refusé la connexion — touche ici pour réessayer');
+        etatSync('err','CONNEXION','Touche ici pour te connecter à Google');
+        if(!connexionDite){ connexionDite=true;
+          toast('Connexion à Google nécessaire','err',['Se connecter',()=>demandeJeton(false)]); }
         return;
       }
-      authMuette=false; jeton=resp.access_token;
+      authMuette=false; jeton=resp.access_token; connexionDite=false;
+      // Un jeton Google vit une heure. On le renouvelle en silence cinq
+      // minutes avant, sinon la première synchro d'après se heurte à un 401 et
+      // l'app passe par la case « CONNEXION » sans raison.
+      clearTimeout(jetonMinuteur);
+      const vie=(parseInt(resp.expires_in,10)||3600)*1000;
+      jetonMinuteur=setTimeout(()=>demandeJeton(true),Math.max(60000,vie-300000));
       etatSync('actif','SYNC…');
       synchronise(true);
     }
@@ -1859,7 +1871,10 @@ function fusionne(local,distant){
 // est simplement notée et rejouée à la fin.
 async function synchronise(force){
   if(!syncConfigure()){ etatSync('','LOCAL','Aucun classeur configuré'); return false; }
-  if(!jeton)return false;
+  // Pas de jeton : on le redemande en silence plutôt que de renoncer. La
+  // synchro repartira d'elle-même dans la réponse. C'est ce qui fait qu'un
+  // téléphone resté une nuit en veille se reconnecte en revenant dessus.
+  if(!jeton){ demandeJeton(true); return false; }
   if(syncEnCours){ syncSale=true; return false; }
   if(!navigator.onLine){ etatSync('err','HORS LIGNE','Les changements partiront au retour du réseau'); syncSale=true; return false; }
   syncEnCours=true;
@@ -1927,18 +1942,26 @@ function syncPlusTard(){
 // veut être SÛR de voir ce que l'autre vient d'ajouter.
 $('#etatSync').onclick=()=>{
   if(!syncConfigure()){ $('#btnMenu').click(); return; }
+  // Sans jeton, l'appui EST le geste que le navigateur attend pour ouvrir la
+  // fenêtre de Google : on ne tente plus en silence ici.
   if(!jeton){ demandeJeton(false); return; }
   synchronise(true);
 };
 // Revenir sur l'app est le moment où l'on veut voir l'état de l'autre : c'est
 // là qu'on relit, plutôt qu'en interrogeant Google toutes les cinq secondes.
-document.addEventListener('visibilitychange',()=>{
-  if(!document.hidden&&syncConfigure()&&maintenant()-syncDernier>5000)synchronise();
-});
-window.addEventListener('focus',()=>{ if(syncConfigure()&&maintenant()-syncDernier>5000)synchronise(); });
-window.addEventListener('online',()=>{ if(syncConfigure())synchronise(true); });
+// Revenir sur l'app, c'est le moment où l'on veut voir l'état de l'autre. Si
+// le jeton manque, on le redemande — `reprend` couvre les deux cas.
+function reprend(force){
+  if(!syncConfigure())return;
+  if(!gisPret){ chargeGIS(); return; }      // le script n'avait pas pu être chargé
+  if(!jeton){ demandeJeton(true); return; }
+  if(force||maintenant()-syncDernier>5000)synchronise(force);
+}
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden)reprend(); });
+window.addEventListener('focus',()=>reprend());
+window.addEventListener('online',()=>reprend(true));
 window.addEventListener('offline',()=>{ if(syncConfigure())etatSync('err','HORS LIGNE','Les changements partiront au retour du réseau'); });
-setInterval(()=>{ if(!document.hidden&&syncConfigure())synchronise(); },SS_PERIODE);
+setInterval(()=>{ if(!document.hidden)reprend(); },SS_PERIODE);
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  MISE À JOUR — reprise du kanban : recharger, purger, puis le DIRE

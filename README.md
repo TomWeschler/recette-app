@@ -81,9 +81,16 @@ feuille de style, donc aucun clignotement au lancement, et il survit à
 ## Synchronisation — un classeur Google partagé
 
 L'app est reliée d'origine : le client OAuth et le classeur sont inscrits dans
-le code, il n'y a rien à régler. À l'ouverture, elle demande silencieusement un
-jeton Google ; il suffit d'être connecté avec un compte autorisé. Les deux
-champs du menu « ··· » restent là pour pointer ailleurs.
+le code, il n'y a rien à régler. **La connexion part à l'ouverture**, en
+silence, et se rattrape toute seule : au retour sur l'app, au retour du réseau,
+toutes les 45 secondes, et cinq minutes avant l'expiration du jeton — qui ne
+vit qu'une heure. Un jeton refusé par Google (401) est jeté et redemandé
+aussitôt.
+
+Le seul cas qui demande un geste est la toute première autorisation, ou un accès
+révoqué : un navigateur n'ouvre pas la fenêtre de Google sans être touché.
+L'app le dit alors une fois, et la pastille de l'en-tête devient le bouton.
+Les deux champs du menu « ··· » restent là pour pointer ailleurs.
 
 **Qui peut lire :** le classeur est un fichier Drive ordinaire. Seuls les
 comptes avec qui il est partagé y accèdent — ni le code public, ni l'identifiant
