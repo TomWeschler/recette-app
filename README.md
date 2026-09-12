@@ -80,24 +80,30 @@ feuille de style, donc aucun clignotement au lancement, et il survit à
 
 ## Synchronisation — un classeur Google partagé
 
-Sans réglage, l'app vit dans le seul `localStorage` : chaque appareil a sa
-liste. Reliée à un classeur Google, elle devient partageable à plusieurs — le
-classeur est la vérité commune, le `localStorage` un cache qui reste seul maître
-quand le réseau manque.
-
-**Réglage, une fois :** menu « ··· » → Synchronisation. Coller un identifiant
-client OAuth (Google Cloud → API et services → Identifiants → ID client OAuth
-pour application Web, avec `https://<compte>.github.io` en origine autorisée),
-puis « Connecter », puis « Créer un classeur ». Sur le deuxième appareil : même
-identifiant client, et l'identifiant du classeur, que l'on lit dans son URL.
-Rien de tout cela n'est dans le dépôt : les deux identifiants sont saisis dans
-l'app et gardés localement.
+L'app est reliée d'origine : le client OAuth et le classeur sont inscrits dans
+le code, il n'y a rien à régler. À l'ouverture, elle demande silencieusement un
+jeton Google ; il suffit d'être connecté avec un compte autorisé. Les deux
+champs du menu « ··· » restent là pour pointer ailleurs.
 
 **Qui peut lire :** le classeur est un fichier Drive ordinaire. Seuls les
-comptes avec qui il est partagé y accèdent — ni le code public, ni
-l'identifiant client ne donnent le moindre accès aux données. Laisser l'écran
-de consentement en mode « Test » ferme la porte une seconde fois : seuls les
-comptes listés comme testeurs peuvent autoriser l'app.
+comptes avec qui il est partagé y accèdent — ni le code public, ni l'identifiant
+client, ni l'identifiant du classeur ne donnent le moindre accès aux données.
+Laisser l'écran de consentement en mode « Test » ferme la porte une seconde
+fois : seuls les comptes listés comme testeurs peuvent autoriser l'app.
+
+**Le classeur :** une feuille par collection, une ligne par chose, des colonnes
+lisibles et corrigeables à la main.
+
+| Feuille | Colonnes |
+|---|---|
+| `courses` | id, nom, rayon, qte, coche, src, le, maj, suppr |
+| `archives` | id, le, items, maj, suppr |
+| `recurrents` | id, nom, rayon, cadence, dernier, maj, suppr |
+| `recettes` | id, nom, tags, duree, ingredients, notes, dernier, faites, maj, suppr |
+| `etat` | cle, valeur, maj — l'historique des tirages, le menu, les trois idées |
+
+Les feuilles manquantes sont créées au premier passage, et la feuille vide que
+Google met dans tout classeur neuf est retirée. Aucune autre n'est touchée.
 
 **Comment les conflits sont tranchés :**
 
@@ -110,9 +116,12 @@ comptes listés comme testeurs peuvent autoriser l'app.
    écriture est toujours « l'état commun + mes changements », jamais « mon état
    à la place du tien ».
 
-La liste de courses et l'historique voyagent ligne à ligne — c'est ce qu'on
-touche à deux. Les récurrents, les recettes, les tirages et les idées voyagent
-en bloc : ils changent rarement, une fusion ligne à ligne n'y apporterait rien.
+**La semence est provisoire.** Un appareil neuf est peuplé de ses vingt recettes
+et vingt-six récurrents dès le premier lancement — même sans réseau, une app
+vide ne sert à rien. Mais tant qu'on n'y a pas touché, ces articles s'effacent
+devant le classeur : sans ça, chaque appareil relié y versait sa propre
+vingtaine, toutes en double. Dès qu'un article est modifié, il cesse d'être
+provisoire et ne s'efface plus.
 
 La synchro part à l'ouverture, au retour sur l'app, au retour du réseau, toutes
 les 45 secondes tant que l'app est visible, et une seconde et demie après chaque

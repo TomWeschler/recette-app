@@ -14,24 +14,29 @@ const BASE=process.env.BASE||'http://127.0.0.1:8899/index.html';
 const R=[];const chk=(n,ok,d='')=>R.push([n,ok,d]);
 
 // Le classeur de mensonge : un objet, trois onglets, rien de plus.
-const feuille={courses:[],archives:[],etat:[]};
-const razFeuille=()=>{ feuille.courses=[];feuille.archives=[];feuille.etat=[]; };
+const ONGLETS=['courses','archives','recurrents','recettes','etat'];
+const feuille={};
+const razFeuille=()=>ONGLETS.forEach(o=>feuille[o]=[]);
+razFeuille();
 const lignes=o=>feuille[o].filter(l=>l[0]&&l[0]!=='id'&&l[0]!=='cle');
 
 (async()=>{
 const b=await chromium.launch({executablePath:NAVIGATEUR});
-const ctx=await b.newContext({viewport:{width:430,height:930},locale:'fr-FR'});
-await ctx.exposeFunction('nodeLire',o=>feuille[o]||[]);
-await ctx.exposeFunction('nodeEcrire',(o,l)=>{ feuille[o]=l; return true; });
 
-// Un appareil : une page, son propre localStorage n'étant pas partagé avec
-// l'autre puisqu'on efface avant chaque branchement.
-async function appareil(nom){
+// Un appareil = un CONTEXTE, pas seulement une page. Deux pages d'un même
+// contexte partagent le localStorage : elles simuleraient deux fenêtres du même
+// téléphone, pas deux téléphones, et l'épreuve croirait éprouver une
+// synchronisation là où les deux « appareils » lisent la même mémoire.
+async function appareil(nom,opts){
+  const ctx=await b.newContext({viewport:{width:430,height:930},locale:'fr-FR'});
+  await ctx.exposeFunction('nodeLire',o=>feuille[o]||[]);
+  await ctx.exposeFunction('nodeEcrire',(o,l)=>{ feuille[o]=l; return true; });
   const p=await ctx.newPage();
+  p.ctx=ctx;
   const errs=[];p.on('pageerror',e=>errs.push(nom+': '+String(e).split('\n')[0]));
   await p.goto(BASE,{waitUntil:'domcontentloaded'});
   await p.waitForFunction(()=>typeof synchronise==='function');
-  await p.evaluate(()=>{
+  await p.evaluate(garderSemence=>{
     // On détourne le transport, et seulement lui.
     ssLire=async o=>await nodeLire(o);
     ssEcrire=async(o,l)=>{ await nodeEcrire(o,l); };
@@ -40,9 +45,16 @@ async function appareil(nom){
     jeton='jeton-test';
     sync={clientId:'test.apps.googleusercontent.com',classeur:'classeur-test',compte:''};
     sauveSync();
-    courses=[]; archives=[]; ecrire('tombes_courses',[]); ecrire('tombes_archives',[]);
-    ecrire('maj_etat',{}); sauveCourses(); sauveArchives(); rendTout();
-  });
+    courses=[]; archives=[];
+    ['courses','archives','recurrents','recettes'].forEach(c=>ecrire('tombes_'+c,[]));
+    ecrire('maj_etat',{});
+    // Par défaut on part d'un appareil nu : la plupart des épreuves posent
+    // elles-mêmes leurs recettes. `semer` garde au contraire la vingtaine
+    // d'articles du premier lancement, pour éprouver ce qu'elle devient.
+    if(!garderSemence){ recettes=[]; recurrents=[];
+                        ecrire('recettes',[]); ecrire('recurrents',[]); }
+    sauveCourses(); sauveArchives(); rendTout();
+  },!!(opts&&opts.semer));
   p.errs=errs;
   return p;
 }
@@ -158,7 +170,7 @@ chk('Deux ajouts simultanés se retrouvent tous les deux',
     croise.a.join()==='Café,Riz,Tomates'&&croise.b.join()==='Café,Riz,Tomates',JSON.stringify(croise));
 
 console.log('=== 7. HORS LIGNE, RIEN N\'EST PERDU ===');
-await ctx.setOffline(true);
+await A.ctx.setOffline(true);
 const horsLigne=await A.evaluate(async()=>{
   ajoute('Sel','epicerie','libre'); sauveCourses();
   const ok=await synchronise(true);
@@ -167,29 +179,96 @@ const horsLigne=await A.evaluate(async()=>{
 chk('Hors ligne, la synchro renonce proprement',horsLigne.ok===false,JSON.stringify(horsLigne));
 chk('…le dit',/HORS LIGNE/.test(horsLigne.pastille),horsLigne.pastille);
 chk('…et garde la saisie',horsLigne.local===4,String(horsLigne.local));
-await ctx.setOffline(false);
-await A.evaluate(()=>synchronise(true));
+await A.ctx.setOffline(false);
+await calme(A);   // le retour du réseau ne se voit pas dans la page à l'instant même
 chk('Au retour du réseau, la saisie part',
     !!lignes('courses').find(l=>l[1]==='Sel'),JSON.stringify(lignes('courses').map(l=>l[1])));
 
-console.log('=== 8. LES COLLECTIONS QUI VOYAGENT EN BLOC ===');
+console.log('=== 8. LES RECETTES ET LES RÉCURRENTS, LIGNE À LIGNE ===');
 razFeuille();
 await A.evaluate(()=>{
-  recettes=[{id:'r1',nom:'Test A',tags:[],ingredients:[],dernier:null,faites:0}];
-  sauveRecettes();
+  recettes=[{id:'rA',nom:'Recette de A',tags:['rapide'],duree:20,
+             ingredients:[{nom:'Riz',rayon:'epicerie'}],notes:'',dernier:null,faites:0,maj:Date.now()}];
+  recurrents=[{id:'uA',nom:'Vinaigre',rayon:'epicerie',cadence:'quotidien',dernier:null,maj:Date.now()}];
+  sauveRecettes(); sauveRecurrents();
 });
 await calme(A);
-chk('Les recettes partent dans l\'onglet « etat »',
-    !!lignes('etat').find(l=>l[0]==='recettes'&&/Test A/.test(l[1])),JSON.stringify(lignes('etat').map(l=>l[0])));
-// L'autre appareil en pose une plus récente : elle doit gagner.
-feuille.etat=feuille.etat.map(l=>l[0]==='recettes'
-  ?['recettes',JSON.stringify([{id:'r2',nom:'Test B',tags:[],ingredients:[],dernier:null,faites:0}]),String(Date.now()+60000)]:l);
-await calme(A);
-chk('Une version distante plus récente remplace la locale',
-    await A.evaluate(()=>recettes.length===1&&recettes[0].nom==='Test B'),
-    await A.evaluate(()=>JSON.stringify(recettes.map(r=>r.nom))));
-chk('…et elle est affichée',
-    await A.evaluate(()=>[...document.querySelectorAll('#listeRecettes .rec-nom')].some(e=>e.textContent==='Test B')));
+const parLigne={rec:lignes('recettes'),ur:lignes('recurrents')};
+chk('Chaque recette a sa ligne, en clair',
+    parLigne.rec.length===1&&parLigne.rec[0][1]==='Recette de A'&&parLigne.rec[0][2]==='rapide',
+    JSON.stringify(parLigne.rec));
+chk('…ses ingrédients tiennent dans leur colonne',
+    /Riz/.test(parLigne.rec[0][4]),JSON.stringify(parLigne.rec[0]));
+chk('Chaque récurrent aussi, avec sa cadence',
+    parLigne.ur.length===1&&parLigne.ur[0][3]==='quotidien',JSON.stringify(parLigne.ur));
+
+// Le défaut que le format en bloc avait : deux personnes ajoutent chacune une
+// recette, et l'une des deux disparaît. Ligne à ligne, les deux survivent.
+await B.evaluate(()=>{ recettes=[]; recurrents=[]; sauveRecettes(); sauveRecurrents(); });
+await calme(B);
+await A.evaluate(()=>{ recettes.push({id:'rA2',nom:'Ajout de A',tags:[],duree:10,
+  ingredients:[],notes:'',dernier:null,faites:0,maj:Date.now()}); sauveRecettes(); });
+await B.evaluate(()=>{ recettes.push({id:'rB2',nom:'Ajout de B',tags:[],duree:10,
+  ingredients:[],notes:'',dernier:null,faites:0,maj:Date.now()}); sauveRecettes(); });
+await calme(A); await calme(B); await calme(A);
+const deuxAjouts={a:await A.evaluate(()=>recettes.map(r=>r.nom).sort()),
+                  b:await B.evaluate(()=>recettes.map(r=>r.nom).sort())};
+chk('Deux recettes ajoutées en même temps survivent toutes les deux',
+    deuxAjouts.a.join()==='Ajout de A,Ajout de B,Recette de A'
+    &&deuxAjouts.b.join()==='Ajout de A,Ajout de B,Recette de A',JSON.stringify(deuxAjouts));
+
+// Supprimer une recette doit tenir, là aussi.
+await A.evaluate(()=>{
+  const r=recettes.find(x=>x.id==='rB2');
+  recettes=recettes.filter(x=>x.id!=='rB2'); poseTombes('recettes',[r]); sauveRecettes();
+});
+await calme(A); await calme(B);
+chk('Une recette supprimée disparaît des deux côtés',
+    await B.evaluate(()=>!recettes.some(r=>r.id==='rB2')),
+    await B.evaluate(()=>JSON.stringify(recettes.map(r=>r.nom))));
+
+// Une recette modifiée d'un côté remplace l'ancienne de l'autre, sans doublon.
+await B.evaluate(()=>{ const r=recettes.find(x=>x.id==='rA'); r.nom='Recette renommée';
+                       r.tags=['mijoté']; estampille(r); sauveRecettes(); });
+await calme(B); await calme(A);
+const renom=await A.evaluate(()=>recettes.filter(r=>r.id==='rA').map(r=>[r.nom,r.tags.join()]));
+chk('Une recette renommée arrive renommée, en un seul exemplaire',
+    renom.length===1&&renom[0][0]==='Recette renommée'&&renom[0][1]==='mijoté',JSON.stringify(renom));
+
+console.log('=== 8bis. LA SEMENCE EST PROVISOIRE ===');
+// Le piège : un téléphone qu'on relie versait ses vingt recettes par-dessus
+// celles du classeur, toutes en double. Tant qu'on n'y a pas touché, la
+// semence s'efface devant le classeur.
+const C=await appareil('C',{semer:true});
+const avantC=await C.evaluate(()=>({r:recettes.length,semence:recettes.every(x=>x.semence)}));
+chk('Un appareil neuf est semé, même sans réseau',avantC.r>15&&avantC.semence,JSON.stringify(avantC));
+await calme(C);
+const apresC={c:await C.evaluate(()=>recettes.map(r=>r.nom).sort()),
+              vivantes:lignes('recettes').filter(l=>l[9]!=='1').length};
+chk('…mais devant un classeur servi, sa semence s\'efface',
+    apresC.c.join()==='Ajout de A,Recette renommée',JSON.stringify(apresC.c));
+chk('…et rien n\'est versé en double dans le classeur',apresC.vivantes===2,JSON.stringify(apresC));
+
+// En revanche, ce à quoi on a touché ne se jette pas.
+const E=await appareil('E',{semer:true});
+await E.evaluate(()=>{ const r=recettes[0]; r.nom='Ma version à moi'; estampille(r); sauveRecettes(); });
+await calme(E);
+const garde=await E.evaluate(()=>recettes.some(r=>r.nom==='Ma version à moi'));
+chk('Une semence à laquelle on a touché n\'est pas jetée',garde===true,
+    await E.evaluate(()=>String(recettes.length)));
+
+console.log('=== 8ter. CLASSEUR VIDE : LA SEMENCE LE REMPLIT ===');
+razFeuille();
+const D=await appareil('D',{semer:true});
+await calme(D);
+const seme={local:await D.evaluate(()=>({r:recettes.length,u:recurrents.length})),
+            classeur:{r:lignes('recettes').length,u:lignes('recurrents').length}};
+chk('Classeur vide : la semence part dedans',
+    seme.local.r>15&&seme.classeur.r===seme.local.r,JSON.stringify(seme));
+chk('…récurrents compris',seme.local.u>20&&seme.classeur.u===seme.local.u,JSON.stringify(seme));
+await calme(D); await calme(D);
+chk('…et elle ne se rejoue pas à chaque synchro',
+    lignes('recettes').length===seme.classeur.r,String(lignes('recettes').length));
 
 console.log('=== 9. DEUX PASSES NE SE CHEVAUCHENT PAS ===');
 const double=await A.evaluate(async()=>{
