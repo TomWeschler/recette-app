@@ -130,12 +130,28 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 }
 
 /* ── Courses : propositions ─────────────────────────────────────────────── */
-.puces{display:flex;flex-wrap:wrap;gap:0.35rem}
+/* Les propositions : une colonne par rayon. auto-fill plutôt qu'un nombre fixe
+   — deux colonnes dans le panneau de droite, une seule sur un téléphone, sans
+   qu'on ait à le décider largeur par largeur. */
+.puces{columns:165px auto;column-gap:0.7rem}
+/* Des colonnes de texte plutôt qu'une grille : une grille alignerait les
+   rayons en rangées et laisserait un trou sous chaque rayon court. Ici les
+   groupes se suivent et remplissent la colonne — mais aucun ne se coupe en
+   deux entre deux colonnes. */
+.grp{break-inside:avoid;-webkit-column-break-inside:avoid;min-width:0;margin-bottom:0.55rem;display:flow-root}
+.grp .rayon-tit{margin-bottom:0.25rem}
+/* Rangée en colonne, une puce occupe sa ligne : les noms s'alignent à gauche
+   et le délai se lit en bout de ligne, toujours au même endroit. */
+.grp .puce{width:100%;justify-content:flex-start;border-radius:7px;margin-bottom:0.2rem;text-align:left}
+.grp .puce .jrs{margin-left:auto;padding-left:0.3rem}
 .puce{display:inline-flex;align-items:center;gap:0.35rem;background:var(--surface2);border:1px solid var(--border);
       color:var(--text-mid);font-size:0.8rem;padding:0.32rem 0.6rem;border-radius:99px;cursor:pointer;
       transition:all 0.13s;font-family:var(--font-body)}
 .puce:hover{border-color:var(--accent);color:var(--text)}
 .puce .pt{width:6px;height:6px;border-radius:50%;background:var(--rc,var(--text-dim));flex-shrink:0}
+/* Un nom trop long est tronqué plutôt que d'élargir sa colonne. */
+.grp .puce{overflow:hidden}
+.grp .puce .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .puce.due{border-color:var(--accent-dim);background:var(--accent-dim);color:var(--text)}
 .puce.dedans{opacity:0.38;text-decoration:line-through}
 .puce .jrs{font-family:var(--font-mono);font-size:0.52rem;color:var(--text-dim);letter-spacing:0.06em}
@@ -362,7 +378,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 //  ici le seul filet contre un navigateur qu'on vide.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const APP_VERSION='v1.1.0';
+const APP_VERSION='v1.2.0';
 
 // ── Outils ────────────────────────────────────────────────────────────────
 const $=s=>document.querySelector(s);
@@ -578,6 +594,28 @@ function marqueRecurrent(nom){
 const DELAI_HEBDO=6;
 const estDu=r=>{ const j=joursDepuis(r.dernier); return j===null||j>=DELAI_HEBDO; };
 
+// Une colonne par rayon, dans l'ordre du magasin, les rayons vides passés.
+// `avecDelai` distingue les deux blocs : un hebdo dit depuis quand il n'a pas
+// été pris — c'est ce qui justifie qu'il soit proposé — là où un article du
+// quotidien se reprend quand il manque, sans calendrier à afficher.
+function groupesParRayon(liste,avecDelai){
+  return RAYONS.map(([k,lib,coul])=>{
+    const g=liste.filter(r=>rayonOk(r.rayon)===k)
+      // Dans un rayon, ce qui est dû remonte ; le reste par ordre alphabétique.
+      .sort((a,b)=>(avecDelai?(estDu(b)-estDu(a)):0)||a.nom.localeCompare(b.nom,'fr'));
+    if(!g.length)return '';
+    return `<div class="grp" data-rayon="${k}">
+      <div class="rayon-tit" style="--rc:var(${coul})">${esc(lib)}
+        <span style="color:var(--text-dim)">${g.length}</span></div>
+      ${g.map(r=>{
+        const dedans=!!dansListe(r.nom), j=joursDepuis(r.dernier);
+        return `<button class="puce${avecDelai&&estDu(r)&&!dedans?' due':''}${dedans?' dedans':''}"
+          data-rec="${r.id}" style="--rc:${rayonCoul(r.rayon)}"><span class="pt"></span><span class="nm">${esc(r.nom)}</span>
+          ${avecDelai?`<span class="jrs">${j===null?'jamais':j===0?"aujourd'hui":j+'j'}</span>`:''}</button>`;
+      }).join('')}
+    </div>`;
+  }).join('');
+}
 function rendCourses(){
   // Le catalogue de saisie : récurrents et ingrédients connus, sans doublon.
   const connus=new Map();
@@ -586,27 +624,21 @@ function rendCourses(){
   $('#listeConnus').innerHTML=[...connus.values()].sort((a,b)=>a.localeCompare(b,'fr'))
     .map(n=>`<option value="${esc(n)}">`).join('');
 
-  // Les hebdo : les dus d'abord, puis les autres, chacun avec son délai.
-  const hebdo=recurrents.filter(r=>r.cadence==='hebdo')
-    .sort((a,b)=>(estDu(b)-estDu(a))||a.nom.localeCompare(b.nom,'fr'));
+  // Les deux blocs de propositions sont rangés par rayon, en colonnes : mêlés,
+  // trente articles ne se lisaient plus, et on cochait le dentifrice en
+  // cherchant les tomates. Mêmes intitulés et mêmes couleurs que la liste de
+  // gauche, pour qu'on n'ait qu'un seul classement en tête.
+  const hebdo=recurrents.filter(r=>r.cadence==='hebdo');
   const dus=hebdo.filter(r=>estDu(r)&&!dansListe(r.nom));
   $('#cptHebdo').textContent=dus.length?`${dus.length} à reprendre`:'à jour';
   $('#btnToutHebdo').disabled=!dus.length;
-  $('#puceHebdo').innerHTML=hebdo.length?hebdo.map(r=>{
-    const dedans=!!dansListe(r.nom), j=joursDepuis(r.dernier);
-    return `<button class="puce${estDu(r)&&!dedans?' due':''}${dedans?' dedans':''}" data-rec="${r.id}"
-      style="--rc:${rayonCoul(r.rayon)}"><span class="pt"></span>${esc(r.nom)}
-      <span class="jrs">${j===null?'jamais':j===0?"aujourd'hui":j+'j'}</span></button>`;
-  }).join(''):'<div class="vide">Aucun achat hebdomadaire — « Gérer » pour en ajouter.</div>';
+  $('#puceHebdo').innerHTML=hebdo.length?groupesParRayon(hebdo,true)
+    :'<div class="vide">Aucun achat hebdomadaire — « Gérer » pour en ajouter.</div>';
 
   // Le quotidien : pas de calendrier, on le reprend quand il manque.
-  const quot=recurrents.filter(r=>r.cadence==='quotidien')
-    .sort((a,b)=>a.nom.localeCompare(b.nom,'fr'));
-  $('#puceQuot').innerHTML=quot.length?quot.map(r=>{
-    const dedans=!!dansListe(r.nom);
-    return `<button class="puce${dedans?' dedans':''}" data-rec="${r.id}"
-      style="--rc:${rayonCoul(r.rayon)}"><span class="pt"></span>${esc(r.nom)}</button>`;
-  }).join(''):'<div class="vide">Rien au quotidien — « Gérer » pour en ajouter.</div>';
+  const quot=recurrents.filter(r=>r.cadence==='quotidien');
+  $('#puceQuot').innerHTML=quot.length?groupesParRayon(quot,false)
+    :'<div class="vide">Rien au quotidien — « Gérer » pour en ajouter.</div>';
 
   // La liste, groupée par rayon dans l'ordre du magasin.
   const coches=courses.filter(i=>i.coche).length;

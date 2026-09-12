@@ -114,6 +114,57 @@ const vieux=await p.evaluate(()=>{
 chk('Pris il y a cinq jours : pas encore proposé',vieux.a5===false);
 chk('Six jours : de nouveau proposé',vieux.a6===true);
 
+console.log('=== 5bis. LES PROPOSITIONS SONT RANGÉES PAR RAYON ===');
+const rang=await p.evaluate(()=>{
+  courses=[]; sauveCourses(); rendCourses();
+  const lis=bloc=>[...document.querySelectorAll('#'+bloc+' .grp')].map(g=>({
+    rayon:g.dataset.rayon,
+    titre:g.querySelector('.rayon-tit').textContent.trim().split('\n')[0].trim(),
+    puces:[...g.querySelectorAll('.puce')].map(b=>recurrents.find(r=>r.id===b.dataset.rec))
+  }));
+  const h=lis('puceHebdo'), q=lis('puceQuot');
+  const ordre=RAYONS.map(([k])=>k);
+  const trie=g=>g.map(x=>ordre.indexOf(x.rayon)).every((v,i,a)=>i===0||a[i-1]<v);
+  return {
+    hGroupes:h.length, qGroupes:q.length,
+    hPur:h.every(g=>g.puces.every(r=>r.rayon===g.rayon)),
+    qPur:q.every(g=>g.puces.every(r=>r.rayon===g.rayon)),
+    hVide:h.some(g=>!g.puces.length), qVide:q.some(g=>!g.puces.length),
+    hOrdre:trie(h), qOrdre:trie(q),
+    titres:h.map(g=>g.titre),
+    total:h.reduce((n,g)=>n+g.puces.length,0),
+    attendu:recurrents.filter(r=>r.cadence==='hebdo').length,
+    cadences:q.every(g=>g.puces.every(r=>r.cadence==='quotidien'))
+  };
+});
+chk('Les deux blocs sont découpés en groupes',rang.hGroupes>1&&rang.qGroupes>1,JSON.stringify(rang));
+chk('Chaque groupe ne contient que son rayon',rang.hPur&&rang.qPur,JSON.stringify(rang));
+chk('Aucun groupe vide n\'est affiché',!rang.hVide&&!rang.qVide,JSON.stringify(rang));
+chk('Les rayons se suivent dans l\'ordre du magasin',rang.hOrdre&&rang.qOrdre,JSON.stringify(rang.titres));
+chk('Aucun article ne se perd au découpage',rang.total===rang.attendu,JSON.stringify(rang));
+chk('Les deux cadences ne se mélangent pas',rang.cadences===true);
+
+// Dans un rayon, ce qui est dû remonte au-dessus de ce qui ne l'est pas.
+const dedans=await p.evaluate(()=>{
+  const ilya=n=>{const d=new Date();d.setDate(d.getDate()-n);return jour(d);};
+  const g=recurrents.filter(r=>r.cadence==='hebdo'&&rayonOk(r.rayon)==='legumes');
+  g.forEach((r,i)=>r.dernier=i%2?null:jour());     // un sur deux est dû
+  rendCourses();
+  const col=document.querySelector('#puceHebdo .grp[data-rayon=legumes]');
+  const etats=[...col.querySelectorAll('.puce')].map(b=>b.classList.contains('due'));
+  return {etats,n:g.length};
+});
+chk('Dans un rayon, les dus sont en tête',
+    dedans.etats.slice().sort((a,b)=>b-a).join()===dedans.etats.join(),JSON.stringify(dedans));
+
+// Le délai n'a de sens que pour l'hebdo : le quotidien n'a pas de calendrier.
+const delais=await p.evaluate(()=>({
+  hebdo:document.querySelectorAll('#puceHebdo .puce .jrs').length,
+  quot:document.querySelectorAll('#puceQuot .puce .jrs').length,
+  puces:document.querySelectorAll('#puceHebdo .puce').length}));
+chk('L\'hebdo affiche son délai, le quotidien non',
+    delais.hebdo===delais.puces&&delais.quot===0,JSON.stringify(delais));
+
 console.log('=== 6. LE QUOTIDIEN, UN APPUI DANS CHAQUE SENS ===');
 await p.evaluate(()=>{ courses=[]; sauveCourses(); rendCourses(); });
 await p.click('#puceQuot .puce');

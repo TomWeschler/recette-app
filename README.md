@@ -22,6 +22,9 @@ téléphone, puis « Ajouter à l'écran d'accueil ».
   il y a six jours ou plus est proposé ; « Tout prendre » verse tous les dus.
 - **Le quotidien — restock** : ce qu'on rachète quand le placard est vide, sans
   calendrier. Un appui ajoute, un deuxième retire.
+- Ces deux blocs sont **rangés en colonnes par rayon**, dans l'ordre du magasin
+  et avec les intitulés de la liste — mêlés, trente articles ne se lisaient
+  plus. Dans un rayon, ce qui est dû remonte en tête.
 - « Vider les cochés » reste rattrapable pendant six secondes.
 - **Idées de repas** : « Propose-moi 3 repas » tire trois plats au hasard —
   mêmes règles de variété que le tirage —, chacun avec son propre bouton pour
