@@ -518,7 +518,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 //  ici le seul filet contre un navigateur qu'on vide.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const APP_VERSION='v1.7.1';
+const APP_VERSION='v1.7.2';
 
 // ── Outils ────────────────────────────────────────────────────────────────
 const $=s=>document.querySelector(s);
@@ -635,6 +635,31 @@ function semer(){
       notes:'',dernier:null,faites:0,maj:t,semence:true
     }));
   ecrire('recurrents',recurrents); ecrire('recettes',recettes); ecrire('seme',true);
+}
+
+// ── La semence d'avant la marque ──────────────────────────────────────────
+// La marque « semence » n'existe que depuis la synchronisation. Les appareils
+// semés avant — c'est-à-dire tous ceux qui tournaient déjà — portaient vingt
+// recettes et vingt-six récurrents que rien ne distinguait d'un travail
+// personnel : reliés au classeur, ils les ont versés À CÔTÉ de ceux qui s'y
+// trouvaient déjà, et tout est apparu en double. On les reconnaît donc après
+// coup, au nom et à l'absence de toute trace d'usage. Un article qu'on a déjà
+// pris, cuisiné ou annoté n'est jamais repris pour de la semence.
+const SEMENCE_NOMS={
+  recurrents:new Set(SEMENCE_RECURRENTS.map(([n])=>norm(n))),
+  recettes:new Set(SEMENCE_RECETTES.map(([n])=>norm(n)))
+};
+function marqueSemenceAncienne(){
+  if(lire('semence_marquee',false))return;
+  recurrents.forEach(r=>{
+    if(r.semence===undefined&&!r.dernier&&SEMENCE_NOMS.recurrents.has(norm(r.nom)))r.semence=true;
+  });
+  recettes.forEach(r=>{
+    if(r.semence===undefined&&!r.dernier&&!(r.faites|0)&&!String(r.notes||'').trim()
+       &&SEMENCE_NOMS.recettes.has(norm(r.nom)))r.semence=true;
+  });
+  ecrire('recurrents',recurrents); ecrire('recettes',recettes);
+  ecrire('semence_marquee',true);
 }
 
 // ── L'état ────────────────────────────────────────────────────────────────
@@ -1610,7 +1635,8 @@ $('#btnMenu').onclick=()=>ouvreModale(`
   // On sème toujours : une app ouverte sans réseau, ou sans compte Google, ne
   // doit pas être vide. Ce qui protège le classeur des doublons, c'est que la
   // semence est provisoire — voir semer() et la synchro.
-  semer(); fermeModale(); montreSortie(null); rendTout();
+  semer();
+  marqueSemenceAncienne(); fermeModale(); montreSortie(null); rendTout();
       toast('Tout a été remis à zéro','ok');
     };
   };
@@ -1805,7 +1831,10 @@ const SS_COLS=[
             String(i.maj||0),i.suppr?'1':''],
    depuis:l=>({id:l[0],nom:l[1],rayon:rayonOk(l[2]),qte:parseInt(l[3],10)||1,coche:l[4]==='1',
                src:l[5]||'libre',le:l[6]||'',maj:parseInt(l[7],10)||0,suppr:l[8]==='1'}),
-   lit:()=>courses, pose:v=>{ courses=v; }, sauve:()=>ecrire('courses',courses)},
+   lit:()=>courses, pose:v=>{ courses=v; }, sauve:()=>ecrire('courses',courses),
+   // Deux fois le même nom dans une liste de courses, c'est un doublon, point.
+   jumeaux:()=>true,
+   rang:(a,b)=>(b.maj||0)-(a.maj||0)||String(a.id).localeCompare(String(b.id))},
   {cle:'archives',
    vers:a=>[a.id,a.le||'',JSON.stringify(a.items||[]),String(a.maj||0),a.suppr?'1':''],
    depuis:l=>({id:l[0],le:l[1]||'',items:jr(l[2]),maj:parseInt(l[3],10)||0,suppr:l[4]==='1'}),
@@ -1819,7 +1848,10 @@ const SS_COLS=[
    depuis:l=>({id:l[0],nom:l[1],rayon:rayonOk(l[2]),cadence:l[3]==='quotidien'?'quotidien':'hebdo',
                dernier:l[4]||null,maj:parseInt(l[5],10)||0,suppr:l[6]==='1'}),
    lit:()=>recurrents, pose:v=>{ recurrents=v; }, sauve:()=>ecrire('recurrents',recurrents),
-   provisoire:true},
+   provisoire:true,
+   // Les noms y sont uniques par construction : « Gérer » refuse déjà un nom
+   // déjà pris. Deux lignes de même nom sont donc toujours un doublon.
+   jumeaux:()=>true, rang:rangParUsage},
   {cle:'recettes',
    vers:r=>[r.id,r.nom,(r.tags||[]).join(', '),String(r.duree||''),
             JSON.stringify(r.ingredients||[]),r.notes||'',r.dernier||'',String(r.faites|0),
@@ -1829,7 +1861,13 @@ const SS_COLS=[
                dernier:l[6]||null,faites:parseInt(l[7],10)||0,
                maj:parseInt(l[8],10)||0,suppr:l[9]==='1'}),
    lit:()=>recettes, pose:v=>{ recettes=v; }, sauve:()=>ecrire('recettes',recettes),
-   provisoire:true}
+   provisoire:true,
+   // Deux recettes de même nom ne sont pas forcément la même : on ne les
+   // réunit que si l'une vient de la semence, ou si elles ont exactement les
+   // mêmes ingrédients. Deux « Pizza maison » différentes restent deux.
+   jumeaux:g=>g.some(r=>r.semence)||new Set(g.map(r=>
+     (r.ingredients||[]).map(i=>norm(i.nom)).sort().join('|'))).size===1,
+   rang:rangParUsage}
 ];
 // La première ligne du classeur est l'en-tête : lisible par un humain qui
 // ouvrirait le classeur, et ignorée à la lecture.
@@ -1865,6 +1903,51 @@ function fusionne(local,distant){
   return {tout,aPousser};
 }
 
+// ── Le ménage ─────────────────────────────────────────────────────────────
+// Les doublons déjà versés dans le classeur, eux, sont là : les reconnaître à
+// la source ne les efface pas. On les réduit donc à chaque passe, sur
+// l'ensemble FUSIONNÉ — celui que les deux appareils ont en commun — avec un
+// classement entièrement déterministe. C'est la condition pour que les deux
+// gardent LE MÊME survivant : si chacun gardait le sien et enterrait l'autre,
+// il ne resterait rien.
+function aServi(r){ return !!(r.dernier||(r.faites|0)||String(r.notes||'').trim()); }
+function deduplique(col,liste){
+  // L'historique des courses n'a pas de nom : rien à y réduire, et deux
+  // courses du même jour ne sont pas un doublon.
+  if(!col.jumeaux)return {tout:liste,partis:0};
+  const groupes=new Map();
+  liste.filter(x=>!x.suppr).forEach(x=>{
+    const k=norm(x.nom);
+    if(!groupes.has(k))groupes.set(k,[]);
+    groupes.get(k).push(x);
+  });
+  const perdants=[];
+  groupes.forEach(g=>{
+    if(g.length<2||!col.jumeaux(g))return;
+    g.sort(col.rang);
+    // Ce qui survit hérite de la plus grande quantité : deux « Lait » posés
+    // chacun de son côté, c'est bien deux briques qu'il faut acheter.
+    const chef=g[0];
+    if('qte' in chef)chef.qte=Math.max.apply(null,g.map(x=>x.qte|0))||1;
+    perdants.push.apply(perdants,g.slice(1));
+  });
+  if(!perdants.length)return {tout:liste,partis:0};
+  const ids=new Set(perdants.map(x=>x.id));
+  const t=maintenant();
+  return {partis:perdants.length,
+          tout:liste.filter(x=>!ids.has(x.id))
+                    .concat(perdants.map(x=>Object.assign({},x,{suppr:true,maj:t})))};
+}
+// Les critères de survie, par collection. Ils ne regardent que des données
+// présentes des deux côtés après fusion — jamais l'heure locale, jamais l'ordre
+// d'arrivée — sinon les deux appareils ne choisiraient pas le même.
+// Déclarée en fonction, pas en const : la table SS_COLS s'en sert, et elle est
+// construite plus haut dans le fichier — une constante ne serait pas encore née.
+function rangParUsage(a,b){
+  return (aServi(b)-aServi(a))||(!!a.semence-!!b.semence)
+         ||String(a.id).localeCompare(String(b.id));
+}
+
 // ── Le va-et-vient ────────────────────────────────────────────────────────
 // Une seule passe : on lit tout, on fusionne, on écrit ce qui a bougé. Elle ne
 // se chevauche jamais avec elle-même ; une demande arrivée pendant une passe
@@ -1879,6 +1962,7 @@ async function synchronise(force){
   if(!navigator.onLine){ etatSync('err','HORS LIGNE','Les changements partiront au retour du réseau'); syncSale=true; return false; }
   syncEnCours=true;
   etatSync('actif','SYNC…');
+  let menageFait=0;
   try{
     await ssOnglets();
 
@@ -1891,9 +1975,11 @@ async function synchronise(force){
       // n'est plus marqué « semence » et reste — on ne supprime pas du travail.
       if(c.provisoire&&distant.some(x=>!x.suppr))local=local.filter(x=>!x.semence);
       const f=fusionne(local.concat(tombes(c.cle)),distant);
-      if(f.aPousser)await ssEcrire(c.cle,[SS_ENTETES[c.cle]].concat(f.tout.map(c.vers)));
-      c.pose(f.tout.filter(x=>!x.suppr));
-      ecrire('tombes_'+c.cle,f.tout.filter(x=>x.suppr));
+      const m=deduplique(c,f.tout);
+      menageFait+=m.partis;
+      if(f.aPousser||m.partis)await ssEcrire(c.cle,[SS_ENTETES[c.cle]].concat(m.tout.map(c.vers)));
+      c.pose(m.tout.filter(x=>!x.suppr));
+      ecrire('tombes_'+c.cle,m.tout.filter(x=>x.suppr));
       c.sauve();
     }
 
@@ -1918,6 +2004,9 @@ async function synchronise(force){
 
     syncFaite=true;
     rendTout();
+    // On le dit : voir dix-huit articles disparaître sans un mot inquiéterait
+    // plus que le doublon lui-même.
+    if(menageFait)toast(`${menageFait} doublon${menageFait>1?'s':''} retiré${menageFait>1?'s':''}`,'ok');
     syncDernier=maintenant();
     etatSync('ok','À JOUR','Dernière synchro : '+new Date(syncDernier).toLocaleTimeString('fr-FR'));
     return true;
@@ -2055,6 +2144,7 @@ function init(){
   // doit pas être vide. Ce qui protège le classeur des doublons, c'est que la
   // semence est provisoire — voir semer() et la synchro.
   semer();
+  marqueSemenceAncienne();
   // Un menu dont les recettes ont disparu afficherait des lignes vides.
   menu=menu.filter(id=>recettes.some(r=>r.id===id));
   propos=propos.filter(id=>recettes.some(r=>r.id===id));

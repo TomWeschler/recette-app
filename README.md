@@ -123,12 +123,24 @@ Google met dans tout classeur neuf est retirée. Aucune autre n'est touchée.
    écriture est toujours « l'état commun + mes changements », jamais « mon état
    à la place du tien ».
 
+**Un nom, un article.** À chaque passe, l'ensemble fusionné est débarrassé de
+ses doublons : même nom normalisé = même chose, pour la liste et les récurrents
+(dont les noms sont uniques par construction) ; pour les recettes, seulement
+quand l'une vient de la semence ou que les ingrédients sont identiques — deux
+« Pizza maison » différentes restent deux. Le survivant est choisi par un
+classement entièrement déterministe (ce qui a servi d'abord, puis le plus petit
+identifiant) : c'est la condition pour que les deux appareils gardent LE MÊME,
+sinon chacun enterrerait celui de l'autre et il ne resterait rien. Ce qui
+survit hérite de la plus grande quantité.
+
 **La semence est provisoire.** Un appareil neuf est peuplé de ses vingt recettes
 et vingt-six récurrents dès le premier lancement — même sans réseau, une app
 vide ne sert à rien. Mais tant qu'on n'y a pas touché, ces articles s'effacent
 devant le classeur : sans ça, chaque appareil relié y versait sa propre
 vingtaine, toutes en double. Dès qu'un article est modifié, il cesse d'être
-provisoire et ne s'efface plus.
+provisoire et ne s'efface plus. Les appareils semés avant que cette marque
+n'existe sont reconnus après coup, au nom et à l'absence de toute trace
+d'usage.
 
 La synchro part à l'ouverture, au retour sur l'app, au retour du réseau, toutes
 les 45 secondes tant que l'app est visible, et une seconde et demie après chaque

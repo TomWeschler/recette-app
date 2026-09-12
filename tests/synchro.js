@@ -282,6 +282,86 @@ const double=await A.evaluate(async()=>{
 chk('Une seconde passe lancée pendant la première ne part pas',
     double.un===true&&double.deux===false,JSON.stringify(double));
 
+console.log('=== 9bis. LE DOUBLON QUI EST ARRIVÉ EN VRAI ===');
+// Le défaut constaté : un téléphone semé AVANT que la marque « semence »
+// existe. Rien ne distinguait ses vingt-six récurrents d'un travail personnel,
+// il les a donc versés à côté de ceux du classeur, et tout est apparu en double.
+// Les appareils des sections précédentes sont fermés : laissés ouverts, leurs
+// synchros de fond continuent de verser leur état dans le classeur qu'on vient
+// de vider, et l'épreuve mesurerait leurs restes.
+await A.ctx.close(); await B.ctx.close();
+razFeuille();
+const G=await appareil('G',{semer:true});
+const H=await appareil('H',{semer:true});
+// On leur retire la marque : les voilà tels qu'ils étaient avant la correction.
+const dévêt=()=>{ recurrents.forEach(r=>{ delete r.semence; }); recettes.forEach(r=>{ delete r.semence; });
+                  ecrire('semence_marquee',false); ecrire('recurrents',recurrents); ecrire('recettes',recettes); };
+await G.evaluate(dévêt); await H.evaluate(dévêt);
+const avant=await G.evaluate(()=>recurrents.length);
+await calme(G); await calme(H); await calme(G);
+const apres={g:await G.evaluate(()=>recurrents.length),
+             h:await H.evaluate(()=>recurrents.length),
+             noms:await G.evaluate(()=>recurrents.map(r=>r.nom)),
+             recettesG:await G.evaluate(()=>recettes.map(r=>r.nom).sort()),
+             recettesH:await H.evaluate(()=>recettes.map(r=>r.nom).sort())};
+const doublons=await G.evaluate(()=>{
+  const c={}; recurrents.forEach(r=>{ const k=norm(r.nom); c[k]=(c[k]||0)+1; });
+  return Object.entries(c).filter(([,n])=>n>1);
+});
+chk('Deux appareils semés à l\'ancienne ne font pas double',
+    apres.g===avant&&apres.h===avant,
+    JSON.stringify({avant,g:apres.g,h:apres.h,doublons,noms:apres.noms}));
+chk('…aucun nom n\'apparaît deux fois',
+    new Set(apres.noms.map(n=>n.toLowerCase())).size===apres.noms.length,JSON.stringify(apres.noms));
+chk('…et les deux appareils gardent exactement la même liste de recettes',
+    apres.recettesG.join()===apres.recettesH.join()
+    &&new Set(apres.recettesG).size===apres.recettesG.length,
+    JSON.stringify({g:apres.recettesG.length,h:apres.recettesH.length}));
+
+// Ce à quoi on a touché survit au ménage, et c'est LUI qui reste.
+await G.evaluate(()=>{ const r=recurrents.find(x=>x.nom==='Café'); r.dernier='2026-09-01';
+                       estampille(r); sauveRecurrents(); });
+await calme(G);
+await H.evaluate(()=>{ recurrents.push(estampille({id:'faux-cafe',nom:'café',rayon:'autre',
+                       cadence:'hebdo',dernier:null})); sauveRecurrents(); });
+await calme(H); await calme(G);
+const survie={g:await G.evaluate(()=>recurrents.filter(r=>norm(r.nom)==='cafe')),
+              h:await H.evaluate(()=>recurrents.filter(r=>norm(r.nom)==='cafe'))};
+chk('Un homonyme ajouté ailleurs est réduit, pas empilé',
+    survie.g.length===1&&survie.h.length===1,JSON.stringify(survie));
+chk('…et c\'est celui qui a servi qui reste, des deux côtés',
+    survie.g[0].dernier==='2026-09-01'&&survie.h[0].dernier==='2026-09-01',JSON.stringify(survie));
+chk('…le même exactement, pas un chacun',survie.g[0].id===survie.h[0].id,
+    JSON.stringify([survie.g[0].id,survie.h[0].id]));
+
+// Deux recettes de même nom mais différentes ne sont PAS réunies.
+// Un nom absent de la semence, pour que l'épreuve ne porte que sur la règle.
+await G.evaluate(()=>{
+  recettes.push({id:'p1',nom:'Tarte du dimanche',tags:[],duree:30,
+                 ingredients:[{nom:'Pommes',rayon:'legumes'}],notes:'',dernier:null,faites:1,maj:Date.now()});
+  recettes.push({id:'p2',nom:'Tarte du dimanche',tags:[],duree:30,
+                 ingredients:[{nom:'Poireaux',rayon:'legumes'}],notes:'',dernier:null,faites:2,maj:Date.now()});
+  sauveRecettes();
+});
+await calme(G); await calme(H);
+const homonymes={g:await G.evaluate(()=>recettes.filter(r=>r.nom==='Tarte du dimanche').length),
+                 h:await H.evaluate(()=>recettes.filter(r=>r.nom==='Tarte du dimanche').length)};
+chk('Deux recettes de même nom aux ingrédients différents restent deux',
+    homonymes.g===2&&homonymes.h===2,JSON.stringify(homonymes));
+
+// Deux fois le même article dans la liste, posé de chaque côté : un seul reste,
+// avec la plus grande quantité — deux briques de lait, pas une.
+await G.evaluate(()=>{ courses=[]; ajoute('Lait','frais','libre'); courses[0].qte=2;
+                       sauveCourses(); });
+await calme(G);
+await H.evaluate(()=>{ ajoute('lait','frais','libre'); sauveCourses(); });
+await calme(H); await calme(G);
+const lait={g:await G.evaluate(()=>courses.filter(i=>norm(i.nom)==='lait')),
+            h:await H.evaluate(()=>courses.filter(i=>norm(i.nom)==='lait'))};
+chk('Le même article ajouté des deux côtés ne fait qu\'une ligne',
+    lait.g.length===1&&lait.h.length===1,JSON.stringify(lait));
+chk('…et il garde la plus grande quantité',lait.g[0].qte===2&&lait.h[0].qte===2,JSON.stringify(lait));
+
 console.log('=== 10. LA CONNEXION SE FAIT À L\'OUVERTURE ===');
 // Une page fraîche, telle qu'elle s'ouvre vraiment : rien n'est détourné avant
 // de regarder ce qu'elle a tenté toute seule.
@@ -364,7 +444,7 @@ const perime=await f.evaluate(async()=>{
 chk('Un jeton périmé est jeté et redemandé aussitôt',
     perime.attrape==='jeton'&&perime.jeton===null&&perime.demandes===1,JSON.stringify(perime));
 
-const errs=[...A.errs,...B.errs,...errsF];
+const errs=[...A.errs,...B.errs,...G.errs,...H.errs,...errsF];
 chk('Aucune erreur JS',errs.length===0,errs.join(' | '));
 
 await b.close();
