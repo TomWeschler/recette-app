@@ -292,6 +292,139 @@ const trou=await p.evaluate(()=>{
 chk('Une recette supprimée quitte les idées, sans ligne vide',
     trou.n===2&&trou.lignes===2,JSON.stringify(trou));
 
+console.log('=== 11. UNE SEULE LISTE COURANTE, ET L\'HISTORIQUE DERRIÈRE ===');
+const rien=await p.evaluate(()=>{
+  courses=[]; archives=[]; sauveCourses(); sauveArchives(); rendTout();
+  document.getElementById('toasts').innerHTML='';
+  const desactive=document.getElementById('btnCourseFaite').disabled;
+  document.getElementById('btnCourseFaite').click();   // sans effet : désactivé
+  const apresClic=archives.length;
+  courseFaite();      // et si on force le passage, ça refuse en le disant
+  return {archives:archives.length,apresClic,desactive,
+          dit:(document.querySelector('#toasts .toast')||{}).textContent||''};
+});
+chk('Liste vide : rien n\'est classé',rien.archives===0,JSON.stringify(rien));
+chk('…le bouton est désactivé',rien.desactive===true&&rien.apresClic===0,JSON.stringify(rien));
+chk('…et forcer le passage refuse en le disant',
+    rien.archives===0&&/vide/i.test(rien.dit),JSON.stringify(rien));
+
+const classe=await p.evaluate(()=>{
+  courses=[]; archives=[];
+  ajoute('Pain','epicerie','libre'); ajoute('Lait','frais','libre'); ajoute('Poulet','viande','libre');
+  courses[0].coche=true; courses[1].qte=3;
+  sauveCourses(); rendCourses();
+  const avant=courses.map(i=>i.nom);
+  document.getElementById('toasts').innerHTML='';
+  document.getElementById('btnCourseFaite').click();
+  const a=archives[0];
+  return {avant,courante:courses.length,n:archives.length,
+          items:a.items.map(i=>[i.nom,i.qte,i.coche,i.rayon]),
+          date:Math.abs(Date.parse(a.le)-Date.now())<10000,
+          lignes:document.querySelectorAll('#listeHisto .histo-ligne').length,
+          cpt:document.getElementById('cptHisto').textContent.trim()};
+});
+chk('« Course faite » ouvre une liste vide',classe.courante===0,JSON.stringify(classe));
+chk('…et classe la course entière, cochés ET non cochés',
+    classe.n===1&&classe.items.length===3,JSON.stringify(classe));
+chk('…en gardant quantités, rayons et ce qui était coché',
+    classe.items.some(i=>i[0]==='Lait'&&i[1]===3)&&classe.items.some(i=>i[0]==='Pain'&&i[2]===true)
+    &&classe.items.some(i=>i[0]==='Poulet'&&i[3]==='viande'),JSON.stringify(classe.items));
+chk('…datée de maintenant',classe.date===true);
+chk('…et l\'historique l\'affiche',classe.lignes===1&&classe.cpt==='1',JSON.stringify(classe));
+
+// Les non cochés : classés quand même, mais remis d'un geste.
+await p.click('#toasts .toast button');
+const remis=await p.evaluate(()=>({
+  courante:courses.map(i=>i.nom).sort(),
+  archive:archives[0].items.length}));
+chk('« Remettre les non cochés » ne remet que ceux-là',
+    remis.courante.join()==='Lait,Poulet',JSON.stringify(remis));
+chk('…et l\'archive garde la course complète',remis.archive===3,JSON.stringify(remis));
+
+// Tout coché : l'action proposée est l'annulation pure et simple.
+const annule=await p.evaluate(()=>{
+  courses=[]; archives=[];
+  ajoute('Riz','epicerie','libre'); ajoute('Sel','epicerie','libre');
+  courses.forEach(i=>i.coche=true);
+  sauveCourses(); rendCourses();
+  document.getElementById('toasts').innerHTML='';
+  document.getElementById('btnCourseFaite').click();
+  return {texte:document.querySelector('#toasts .toast button').textContent,
+          apres:archives.length,courante:courses.length};
+});
+chk('Tout coché : la course est classée',annule.apres===1&&annule.courante===0,JSON.stringify(annule));
+chk('…et c\'est « Annuler » qu\'on propose',annule.texte==='Annuler',annule.texte);
+await p.click('#toasts .toast button');
+const revenu=await p.evaluate(()=>({courante:courses.length,archives:archives.length}));
+chk('Annuler ramène la liste et retire l\'archive',
+    revenu.courante===2&&revenu.archives===0,JSON.stringify(revenu));
+
+// Reprendre : on ajoute à la liste courante, on ne la remplace pas.
+const repris=await p.evaluate(()=>{
+  courses=[]; archives=[];
+  ajoute('Farine','epicerie','libre'); ajoute('Sucre','epicerie','libre');
+  sauveCourses(); rendCourses();
+  document.getElementById('btnCourseFaite').click();
+  courses=[]; ajoute('Farine','epicerie','libre'); ajoute('Beurre','frais','libre');
+  sauveCourses(); rendCourses();
+  document.querySelector('#listeHisto [data-reprendre]').click();
+  return {noms:courses.map(i=>i.nom).sort(),qtes:courses.map(i=>i.qte),
+          archives:archives.length};
+});
+chk('« Reprendre » ajoute à la liste courante sans la remplacer',
+    repris.noms.join()==='Beurre,Farine,Sucre',JSON.stringify(repris));
+chk('…sans dédoubler ce qui y était déjà',repris.qtes.every(q=>q===1),JSON.stringify(repris));
+chk('…et l\'archive reste en place',repris.archives===1,String(repris.archives));
+
+// Voir : le détail, en lecture seule.
+await p.evaluate(()=>{ document.getElementById('toasts').innerHTML=''; });
+await p.click('#listeHisto [data-voir]');
+const detail=await p.evaluate(()=>({
+  ouverte:document.getElementById('modalBg').classList.contains('open'),
+  items:document.querySelectorAll('#modal .arch-item').length,
+  cases:document.querySelectorAll('#modal .case').length}));
+chk('« Voir » ouvre le détail de la course',detail.ouverte&&detail.items===2,JSON.stringify(detail));
+chk('…en lecture seule, rien à recocher',detail.cases===0,JSON.stringify(detail));
+await p.click('#arFerme');
+
+// Supprimer une entrée, et le regretter.
+const supp=await p.evaluate(()=>{
+  document.getElementById('toasts').innerHTML='';
+  document.querySelector('#listeHisto [data-sup]').click();
+  return {apres:archives.length,annulable:!!document.querySelector('#toasts .toast button')};
+});
+chk('Une course se supprime de l\'historique',supp.apres===0,JSON.stringify(supp));
+await p.click('#toasts .toast button');
+chk('…et la suppression s\'annule',await p.evaluate(()=>archives.length===1));
+
+// Le plafond : l'historique ne grossit pas sans fin.
+const plafond=await p.evaluate(()=>{
+  archives=[]; courses=[];
+  for(let i=0;i<MAX_ARCHIVES+5;i++){
+    ajoute('Article '+i,'autre','libre'); rendCourses();
+    document.getElementById('btnCourseFaite').click();
+  }
+  return {n:archives.length,max:MAX_ARCHIVES,
+          premier:archives[0].items[0].nom,dernier:archives[archives.length-1].items[0].nom};
+});
+chk('L\'historique est plafonné',plafond.n===plafond.max,JSON.stringify(plafond));
+chk('…et ce sont les plus anciennes qui tombent',
+    plafond.premier==='Article '+(plafond.max+4)&&plafond.dernier==='Article 5',JSON.stringify(plafond));
+
+// Il survit au rechargement, et part dans la sauvegarde.
+const paq=await p.evaluate(()=>{
+  archives=archives.slice(0,2); sauveArchives();
+  const j=paquet();
+  return {dans:Array.isArray(j.archives)&&j.archives.length===2};
+});
+chk('L\'historique part dans la sauvegarde JSON',paq.dans===true);
+await p.reload({waitUntil:'domcontentloaded'});
+await p.waitForFunction(()=>typeof courseFaite==='function');
+const apresRech=await p.evaluate(()=>({n:archives.length,
+  lignes:document.querySelectorAll('#listeHisto .histo-ligne').length}));
+chk('…et il est toujours là au rechargement',
+    apresRech.n===2&&apresRech.lignes===2,JSON.stringify(apresRech));
+
 chk('Aucune erreur JS',errs.length===0,errs.join(' | '));
 
 await b.close();

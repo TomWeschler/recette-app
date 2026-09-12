@@ -184,6 +184,20 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
      padding:0.2rem 0.3rem;flex-shrink:0}
 .sup:hover{color:var(--danger)}
 
+/* ── Courses : l'historique ─────────────────────────────────────────────── */
+.histo-ligne{display:flex;align-items:center;gap:0.55rem;background:var(--surface);border:1px solid var(--border);
+             border-radius:8px;padding:0.5rem 0.6rem;margin-bottom:0.3rem}
+.histo-txt{flex:1;min-width:0}
+.histo-date{display:block;font-size:0.88rem}
+.histo-meta{display:block;font-family:var(--font-mono);font-size:0.5rem;letter-spacing:0.1em;
+            text-transform:uppercase;color:var(--text-dim);margin-top:0.15rem}
+/* Le détail d'une course archivée, dans la modale : lisible, pas cliquable —
+   ce qui est classé ne se recoche pas. */
+.arch-item{display:flex;align-items:center;gap:0.5rem;font-size:0.88rem;padding:0.16rem 0}
+.arch-item .pt{width:6px;height:6px;border-radius:50%;background:var(--rc,var(--text-dim));flex-shrink:0}
+.arch-item.coche{color:var(--text-dim);text-decoration:line-through}
+.arch-item .q{font-family:var(--font-mono);font-size:0.6rem;color:var(--text-dim);margin-left:auto}
+
 /* ── Recettes : le tirage ───────────────────────────────────────────────── */
 .tirage{background:linear-gradient(160deg,var(--surface2),var(--surface));border:1px solid var(--border);
         border-radius:12px;padding:1rem;margin-bottom:0.8rem;text-align:center}
@@ -284,8 +298,14 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
       <div class="col-liste">
         <div class="bloc">
           <div class="bloc-titre">La liste <span class="cpt" id="cptListe"></span>
-            <span class="fin"><button class="btn" id="btnViderCoches">Vider les cochés</button></span></div>
+            <span class="fin"><button class="btn" id="btnViderCoches">Vider les cochés</button>
+            <button class="btn primaire" id="btnCourseFaite">Course faite</button></span></div>
           <div id="listeCourses"></div>
+        </div>
+
+        <div class="bloc" id="blocHisto">
+          <div class="bloc-titre">Historique <span class="cpt" id="cptHisto"></span></div>
+          <div id="listeHisto"></div>
         </div>
       </div>
 
@@ -378,7 +398,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 //  ici le seul filet contre un navigateur qu'on vide.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const APP_VERSION='v1.2.0';
+const APP_VERSION='v1.3.0';
 
 // ── Outils ────────────────────────────────────────────────────────────────
 const $=s=>document.querySelector(s);
@@ -497,6 +517,7 @@ let recettes   = lire('recettes',[]);
 let histo      = lire('histo',[]);      // ids tirés, du plus récent au plus ancien
 let menu       = lire('menu',[]);       // le menu de la semaine, s'il est ouvert
 let propos     = lire('propos',[]);     // les trois idées posées à côté de la liste
+let archives   = lire('archives',[]);   // les courses faites, de la plus récente à la plus ancienne
 let filtreTag  = null;                  // volontairement non persisté : un filtre
                                         // oublié d'hier ferait croire à un
                                         // répertoire à moitié vide.
@@ -506,6 +527,7 @@ const sauveRecettes   = ()=>ecrire('recettes',recettes);
 const sauveHisto      = ()=>ecrire('histo',histo);
 const sauveMenu       = ()=>ecrire('menu',menu);
 const sauvePropos     = ()=>ecrire('propos',propos);
+const sauveArchives   = ()=>ecrire('archives',archives);
 
 // ── Toast ─────────────────────────────────────────────────────────────────
 function toast(msg,type,action){
@@ -644,6 +666,7 @@ function rendCourses(){
   const coches=courses.filter(i=>i.coche).length;
   $('#cptListe').textContent=courses.length?`${coches}/${courses.length}`:'';
   $('#btnViderCoches').disabled=!coches;
+  $('#btnCourseFaite').disabled=!courses.length;
   const html=RAYONS.map(([k,lib,coul])=>{
     const items=courses.filter(i=>rayonOk(i.rayon)===k);
     if(!items.length)return '';
@@ -794,6 +817,109 @@ $('#listePropos').addEventListener('click',e=>{
     propos[n]=r.id; sauvePropos(); rendPropos();
   }
 });
+
+// ── Une seule liste courante, et derrière elle l'historique ───────────────
+// « Course faite » classe la liste entière et en ouvre une vide : il n'y a
+// jamais deux listes courantes, c'est ce qui rend le bouton lisible. Ce qui
+// est classé est un instantané — noms, rayons, quantités et ce qui avait été
+// coché — et ne bouge plus jamais.
+const MAX_ARCHIVES=50;   // le quota de localStorage n'est pas infini, et une
+                         // course d'il y a deux ans n'apprend plus rien
+function courseFaite(){
+  if(!courses.length){ toast('La liste est vide — rien à classer','err'); return; }
+  const listeAvant=courses.slice();
+  const nonCoches=listeAvant.filter(i=>!i.coche);
+  const entree={id:uid(),le:new Date().toISOString(),
+                items:listeAvant.map(i=>({nom:i.nom,rayon:rayonOk(i.rayon),qte:i.qte|0,coche:!!i.coche,src:i.src}))};
+  archives=[entree,...archives].slice(0,MAX_ARCHIVES);
+  courses=[];
+  sauveArchives(); sauveCourses(); rendCourses(); rendHistorique();
+  // Ce qui n'a pas été coché n'a pas été trouvé — ou pas cherché. C'est classé
+  // avec le reste, parce que l'archive doit dire la vérité sur cette course ;
+  // mais on propose de le remettre tout de suite dans la nouvelle liste, ce
+  // qui est presque toujours l'intention.
+  if(nonCoches.length)
+    toast(`Course classée — ${nonCoches.length} non coché${nonCoches.length>1?'s':''}`,'ok',
+      [`Remettre les non cochés`,()=>{
+        nonCoches.forEach(i=>ajoute(i.nom,i.rayon,i.src));
+        sauveCourses(); sauveRecurrents(); rendCourses();
+      }]);
+  else
+    toast(`Course classée — ${listeAvant.length} article${listeAvant.length>1?'s':''}`,'ok',
+      ['Annuler',()=>{
+        archives=archives.filter(a=>a.id!==entree.id);
+        courses=listeAvant;
+        sauveArchives(); sauveCourses(); rendCourses(); rendHistorique();
+      }]);
+}
+$('#btnCourseFaite').onclick=courseFaite;
+
+const dateCourte=iso=>{
+  const d=new Date(iso);
+  if(isNaN(d))return '—';
+  return d.toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'})
+       +' · '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+};
+function rendHistorique(){
+  $('#cptHisto').textContent=archives.length?String(archives.length):'';
+  $('#listeHisto').innerHTML=archives.length?archives.map(a=>{
+    const n=a.items.length, pris=a.items.filter(i=>i.coche).length;
+    return `<div class="histo-ligne" data-id="${a.id}">
+      <span class="histo-txt">
+        <span class="histo-date">${esc(dateCourte(a.le))}</span>
+        <span class="histo-meta">${n} article${n>1?'s':''} — ${pris} coché${pris>1?'s':''}</span>
+      </span>
+      <button class="btn" data-voir>Voir</button>
+      <button class="btn" data-reprendre>Reprendre</button>
+      <button class="sup" data-sup aria-label="Supprimer cette course">✕</button>
+    </div>`;
+  }).join(''):'<div class="vide">Aucune course classée.<br>« Course faite » range la liste courante ici, et en ouvre une vide.</div>';
+}
+$('#listeHisto').addEventListener('click',e=>{
+  const ligne=e.target.closest('.histo-ligne'); if(!ligne)return;
+  const a=archives.find(x=>x.id===ligne.dataset.id); if(!a)return;
+  if(e.target.closest('[data-voir]'))return voirArchive(a);
+  if(e.target.closest('[data-reprendre]')){
+    // Reprendre AJOUTE à la liste courante au lieu de la remplacer : il n'y a
+    // qu'une liste courante, et on ne jette pas ce qu'elle contient déjà.
+    let n=0;
+    a.items.forEach(i=>{ if(!dansListe(i.nom)){ ajoute(i.nom,i.rayon,i.src); n++; } });
+    sauveCourses(); sauveRecurrents(); rendCourses();
+    toast(n?`${n} article${n>1?'s':''} repris`:'Tout y était déjà',n?'ok':'info');
+    return;
+  }
+  if(e.target.closest('[data-sup]')){
+    const place=archives.indexOf(a);
+    archives=archives.filter(x=>x.id!==a.id);
+    sauveArchives(); rendHistorique();
+    toast('Course supprimée de l\'historique','ok',['Annuler',()=>{
+      archives.splice(place<0?archives.length:place,0,a);
+      sauveArchives(); rendHistorique();
+    }]);
+  }
+});
+function voirArchive(a){
+  const parRayon=RAYONS.map(([k,lib,coul])=>{
+    const g=a.items.filter(i=>rayonOk(i.rayon)===k);
+    if(!g.length)return '';
+    return `<div class="rayon-tit" style="--rc:var(${coul});margin-top:0.5rem">${esc(lib)}</div>`+
+      g.map(i=>`<div class="arch-item${i.coche?' coche':''}" style="--rc:var(${coul})">
+        <span class="pt"></span>${esc(i.nom)}${i.qte>1?`<span class="q">×${i.qte}</span>`:''}</div>`).join('');
+  }).join('');
+  ouvreModale(`<h2>Course du ${esc(dateCourte(a.le))}</h2>${parRayon}
+    <div class="modal-act">
+      <button class="btn gauche" id="arReprendre">Tout reprendre</button>
+      <button class="btn" id="arFerme">Fermer</button>
+    </div>`,()=>{
+    $('#arFerme').onclick=fermeModale;
+    $('#arReprendre').onclick=()=>{
+      let n=0;
+      a.items.forEach(i=>{ if(!dansListe(i.nom)){ ajoute(i.nom,i.rayon,i.src); n++; } });
+      sauveCourses(); sauveRecurrents(); fermeModale(); rendCourses();
+      toast(n?`${n} article${n>1?'s':''} repris`:'Tout y était déjà',n?'ok':'info');
+    };
+  });
+}
 
 // ── Gérer les récurrents ──────────────────────────────────────────────────
 function gereRecurrents(cadence){
@@ -1104,7 +1230,7 @@ $('#btnNouvelleRecette').onclick=()=>editeRecette(null);
 // ═══════════════════════════════════════════════════════════════════════════
 function paquet(){
   return {app:'recette',version:APP_VERSION,le:new Date().toISOString(),
-          courses,recurrents,recettes,histo,menu,propos};
+          courses,recurrents,recettes,histo,menu,propos,archives};
 }
 function exporte(){
   const a=document.createElement('a');
@@ -1125,7 +1251,9 @@ function importe(fichier){
     histo=Array.isArray(j.histo)?j.histo:[];
     menu=Array.isArray(j.menu)?j.menu:[];
     propos=Array.isArray(j.propos)?j.propos:[];
+    archives=Array.isArray(j.archives)?j.archives:[];
     sauveCourses(); sauveRecurrents(); sauveRecettes(); sauveHisto(); sauveMenu(); sauvePropos();
+    sauveArchives();
     ecrire('seme',true);
     fermeModale(); montreSortie(null); rendTout();
     toast('Sauvegarde restaurée','ok');
@@ -1153,7 +1281,7 @@ $('#btnMenu').onclick=()=>ouvreModale(`
     // plutôt qu'avec un confirm() que le navigateur peut bloquer.
     $('#sgRaz').outerHTML='<button class="btn danger" id="sgRaz2">Confirmer l\'effacement</button>';
     $('#sgRaz2').onclick=()=>{
-      courses=[];recurrents=[];recettes=[];histo=[];menu=[];propos=[];
+      courses=[];recurrents=[];recettes=[];histo=[];menu=[];propos=[];archives=[];
       try{ Object.keys(localStorage).filter(k=>k.startsWith(LS)).forEach(k=>localStorage.removeItem(k)); }catch(e){}
       semer(); fermeModale(); montreSortie(null); rendTout();
       toast('Tout a été remis à zéro','ok');
@@ -1244,7 +1372,7 @@ if('serviceWorker' in navigator){
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-function rendTout(){ rendCourses(); rendRecettes(); rendMenu(); rendPropos(); }
+function rendTout(){ rendCourses(); rendRecettes(); rendMenu(); rendPropos(); rendHistorique(); }
 function init(){
   $('#chRayon').innerHTML='<option value="">Rayon auto</option>'+
     RAYONS.map(([k,l])=>`<option value="${k}">${esc(l)}</option>`).join('');

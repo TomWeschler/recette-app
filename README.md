@@ -26,6 +26,12 @@ téléphone, puis « Ajouter à l'écran d'accueil ».
   et avec les intitulés de la liste — mêlés, trente articles ne se lisaient
   plus. Dans un rayon, ce qui est dû remonte en tête.
 - « Vider les cochés » reste rattrapable pendant six secondes.
+- **Une seule liste courante.** « Course faite » la classe entière dans
+  l'historique — cochés et non cochés, avec quantités et rayons — et en ouvre
+  une vide. Les non cochés se remettent d'un geste dans la nouvelle liste, et
+  l'archive, elle, garde la course telle qu'elle a été. Chaque course classée
+  se relit (« Voir ») et se reprend (« Reprendre » ajoute ce qui manque à la
+  liste courante, sans rien remplacer). Les cinquante dernières sont gardées.
 - **Idées de repas** : « Propose-moi 3 repas » tire trois plats au hasard —
   mêmes règles de variété que le tirage —, chacun avec son propre bouton pour
   verser ses ingrédients, et son ↻ pour changer celui-là seulement. Redemander

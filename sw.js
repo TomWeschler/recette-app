@@ -4,7 +4,7 @@
 // du domaine, il n'y a donc rien à laisser passer. Tout est local, et tout est
 // caché — y compris les polices, qui sont dans ce dossier précisément pour
 // être dans la portée de ce service worker.
-const VERSION = 'v1.2.0';
+const VERSION = 'v1.3.0';
 const SHELL   = 'recette-shell-' + VERSION;
 const ASSETS  = 'recette-assets-' + VERSION;
 
