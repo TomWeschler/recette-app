@@ -1,0 +1,1121 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>RECETTE APP</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230d0b09'/%3E%3Ccircle cx='16' cy='17' r='8' fill='none' stroke='%23ff9557' stroke-width='1.6'/%3E%3Cpath d='M6 11h20' stroke='%23ff9557' stroke-width='1.6' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='17' r='2.6' fill='%23ff9557'/%3E%3C/svg%3E">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#ff9557">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Recette">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+/* ── Les polices sont chez nous ───────────────────────────────────────────
+   Même règle que sur le kanban : aucun appel sortant. Deux familles suffisent
+   ici (Syne pour le texte, Space Mono pour les libellés techniques), latin et
+   latin-ext. unicode-range est conservé tel quel : le navigateur ne télécharge
+   que les fichiers dont il a besoin pour ce qu'il affiche. Elles sont copiées
+   dans recette/fonts/ plutôt que partagées avec la racine, parce qu'un service
+   worker ne peut pré-charger que ce qui est dans sa portée — hors ligne, une
+   police empruntée au dossier voisin ne serait jamais servie. */
+@font-face { font-family: 'Syne'; font-style: normal; font-weight: 400; font-display: swap; src: url(fonts/syne-400-latin-ext.woff2) format('woff2'); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF}
+@font-face { font-family: 'Syne'; font-style: normal; font-weight: 400; font-display: swap; src: url(fonts/syne-400-latin.woff2) format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face { font-family: 'Syne'; font-style: normal; font-weight: 600; font-display: swap; src: url(fonts/syne-600-latin-ext.woff2) format('woff2'); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF}
+@font-face { font-family: 'Syne'; font-style: normal; font-weight: 600; font-display: swap; src: url(fonts/syne-600-latin.woff2) format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face { font-family: 'Syne'; font-style: normal; font-weight: 700; font-display: swap; src: url(fonts/syne-700-latin-ext.woff2) format('woff2'); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF}
+@font-face { font-family: 'Syne'; font-style: normal; font-weight: 700; font-display: swap; src: url(fonts/syne-700-latin.woff2) format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face { font-family: 'Syne'; font-style: normal; font-weight: 800; font-display: swap; src: url(fonts/syne-800-latin-ext.woff2) format('woff2'); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF}
+@font-face { font-family: 'Syne'; font-style: normal; font-weight: 800; font-display: swap; src: url(fonts/syne-800-latin.woff2) format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face { font-family: 'Space Mono'; font-style: normal; font-weight: 400; font-display: swap; src: url(fonts/space-mono-400-latin-ext.woff2) format('woff2'); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF}
+@font-face { font-family: 'Space Mono'; font-style: normal; font-weight: 400; font-display: swap; src: url(fonts/space-mono-400-latin.woff2) format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face { font-family: 'Space Mono'; font-style: normal; font-weight: 700; font-display: swap; src: url(fonts/space-mono-700-latin-ext.woff2) format('woff2'); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF}
+@font-face { font-family: 'Space Mono'; font-style: normal; font-weight: 700; font-display: swap; src: url(fonts/space-mono-700-latin.woff2) format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+
+:root{
+  --sys-sans:system-ui,-apple-system,'Segoe UI',sans-serif;
+  --sys-mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+  --bg:#0d0b09;--surface:#151210;--surface2:#1c1815;--surface3:#241f1b;
+  --border:#2c2622;--border2:#453b34;
+  --accent:#ff9557;--accent-dim:rgba(255,149,87,0.12);
+  --text:#f0e9e4;--text-mid:#b8a99e;--text-dim:#7a6b61;
+  --green:#7bd88f;--warn:#fbbf24;--danger:#f87171;
+  --font-body:'Syne',var(--sys-sans);
+  --font-mono:'Space Mono',var(--sys-mono);
+  /* Un rayon = une couleur. Elle sert au liseré des sections et aux pastilles :
+     en course, on reconnaît un rayon à sa couleur avant de lire son nom. */
+  --r-legumes:#7bd88f;--r-frais:#60c8f0;--r-viande:#f87171;--r-epicerie:#fcd34d;
+  --r-surgele:#93c5fd;--r-boisson:#c084fc;--r-entretien:#94a3b8;--r-autre:#a8a29e;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+.sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:0}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);display:flex;flex-direction:column;
+     -webkit-tap-highlight-color:transparent}
+/* Le grain, comme sur le kanban : il casse l'aplat des fonds sombres. */
+body::after{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");pointer-events:none;z-index:9999}
+
+/* ── HEADER ─────────────────────────────────────────────────────────────── */
+header{flex-shrink:0;height:56px;background:var(--bg);border-bottom:1px solid var(--border);
+       display:flex;align-items:center;padding:0 0.9rem;gap:0.6rem;z-index:200;position:relative;
+       padding-top:env(safe-area-inset-top)}
+.logo{font-family:var(--font-mono);font-size:0.64rem;font-weight:700;letter-spacing:0.28em;color:var(--accent);white-space:nowrap}
+.nav-sep{width:1px;height:22px;background:var(--border);flex-shrink:0}
+.nav-tabs{display:flex;gap:0.1rem}
+.nav-tab{background:none;border:none;font-family:var(--font-mono);font-size:0.58rem;letter-spacing:0.15em;
+         text-transform:uppercase;color:var(--text-dim);cursor:pointer;padding:0.3rem 0.65rem;
+         border-bottom:2px solid transparent;transition:color 0.13s,border-color 0.13s;white-space:nowrap}
+.nav-tab:hover{color:var(--text-mid)}
+.nav-tab.active{color:var(--accent);border-color:var(--accent)}
+.hspace{flex:1}
+.hbtn{background:none;border:1px solid var(--border);color:var(--text-dim);font-family:var(--font-mono);
+      font-size:0.56rem;letter-spacing:0.1em;padding:0.3rem 0.55rem;border-radius:4px;cursor:pointer}
+.hbtn:hover{color:var(--text);border-color:var(--border2)}
+
+main{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:0.9rem 0.9rem calc(2.5rem + env(safe-area-inset-bottom));
+     -webkit-overflow-scrolling:touch}
+.page{display:none;max-width:760px;margin:0 auto}
+.page.active{display:block}
+
+/* ── Pièces communes ────────────────────────────────────────────────────── */
+.bloc{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:0.8rem;margin-bottom:0.8rem}
+.bloc-titre{font-family:var(--font-mono);font-size:0.55rem;letter-spacing:0.18em;text-transform:uppercase;
+            color:var(--text-dim);margin-bottom:0.6rem;display:flex;align-items:center;gap:0.4rem 0.5rem;flex-wrap:wrap}
+.bloc-titre .cpt{color:var(--accent);white-space:nowrap}
+.bloc-titre .fin{margin-left:auto;display:flex;gap:0.35rem}
+input,select,textarea{background:var(--surface2);border:1px solid var(--border);color:var(--text);
+      font-family:var(--font-body);font-size:0.92rem;padding:0.55rem 0.7rem;border-radius:7px;width:100%}
+input::placeholder,textarea::placeholder{color:var(--text-dim)}
+textarea{resize:vertical;line-height:1.5}
+select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 4.5 6 8.5 10 4.5' fill='none' stroke='%237a6b61' stroke-width='1.4'/%3E%3C/svg%3E");
+       background-repeat:no-repeat;background-position:right 0.5rem center;background-size:12px;padding-right:1.8rem}
+.btn{font-family:var(--font-mono);font-size:0.6rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;
+     background:var(--surface2);border:1px solid var(--border);color:var(--text-mid);padding:0.5rem 0.8rem;
+     border-radius:7px;cursor:pointer;transition:all 0.13s;white-space:nowrap}
+.btn:hover{color:var(--text);border-color:var(--border2)}
+.btn.primaire{background:var(--accent);border-color:var(--accent);color:#1a0f07}
+.btn.primaire:hover{filter:brightness(1.08);color:#1a0f07}
+.btn.danger:hover{color:var(--danger);border-color:var(--danger)}
+.btn:disabled{opacity:0.4;cursor:not-allowed}
+.vide{color:var(--text-dim);font-size:0.85rem;text-align:center;padding:1.4rem 0.5rem;line-height:1.6}
+
+/* ── Courses : ajout ────────────────────────────────────────────────────── */
+.ajout{display:flex;gap:0.45rem}
+.ajout input{flex:1;min-width:0}
+.ajout select{width:auto;flex-shrink:0;max-width:9rem;font-size:0.8rem}
+/* Sur un téléphone, le champ garde toute la largeur : à trois éléments sur une
+   ligne, le placeholder était coupé au milieu d'un mot. Le rayon et le bouton
+   passent dessous, où ils ont la place. */
+@media(max-width:560px){
+  .ajout{flex-wrap:wrap}
+  .ajout input{flex:1 1 100%}
+  .ajout select{flex:1;max-width:none}
+}
+
+/* ── Courses : propositions ─────────────────────────────────────────────── */
+.puces{display:flex;flex-wrap:wrap;gap:0.35rem}
+.puce{display:inline-flex;align-items:center;gap:0.35rem;background:var(--surface2);border:1px solid var(--border);
+      color:var(--text-mid);font-size:0.8rem;padding:0.32rem 0.6rem;border-radius:99px;cursor:pointer;
+      transition:all 0.13s;font-family:var(--font-body)}
+.puce:hover{border-color:var(--accent);color:var(--text)}
+.puce .pt{width:6px;height:6px;border-radius:50%;background:var(--rc,var(--text-dim));flex-shrink:0}
+.puce.due{border-color:var(--accent-dim);background:var(--accent-dim);color:var(--text)}
+.puce.dedans{opacity:0.38;text-decoration:line-through}
+.puce .jrs{font-family:var(--font-mono);font-size:0.52rem;color:var(--text-dim);letter-spacing:0.06em}
+
+/* ── Courses : la liste ─────────────────────────────────────────────────── */
+.rayon{margin-bottom:0.7rem}
+.rayon-tit{font-family:var(--font-mono);font-size:0.52rem;letter-spacing:0.16em;text-transform:uppercase;
+           color:var(--rc,var(--text-dim));padding:0 0 0.3rem 0.55rem;border-left:2px solid var(--rc,var(--border));
+           margin-bottom:0.3rem;display:flex;gap:0.4rem;align-items:baseline}
+.item{display:flex;align-items:center;gap:0.6rem;background:var(--surface);border:1px solid var(--border);
+      border-radius:8px;padding:0.5rem 0.55rem;margin-bottom:0.3rem}
+.item.coche{opacity:0.45}
+.case{width:22px;height:22px;flex-shrink:0;border:1.5px solid var(--border2);border-radius:6px;background:none;
+      cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+.case::after{content:'';width:11px;height:6px;border-left:2px solid #1a0f07;border-bottom:2px solid #1a0f07;
+             transform:rotate(-45deg) translate(1px,-2px);opacity:0}
+.item.coche .case{background:var(--accent);border-color:var(--accent)}
+.item.coche .case::after{opacity:1}
+.item-nom{flex:1;min-width:0;font-size:0.94rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+          background:none;border:none;padding:0;color:var(--text);font-family:var(--font-body)}
+.item.coche .item-nom{text-decoration:line-through;color:var(--text-mid)}
+.item-src{font-family:var(--font-mono);font-size:0.48rem;letter-spacing:0.1em;color:var(--text-dim);
+          border:1px solid var(--border);border-radius:99px;padding:0.1rem 0.35rem;flex-shrink:0}
+.qte{display:flex;align-items:center;gap:0.15rem;flex-shrink:0}
+.qte button{width:24px;height:24px;background:var(--surface2);border:1px solid var(--border);color:var(--text-mid);
+            border-radius:6px;cursor:pointer;font-size:0.85rem;line-height:1;padding:0}
+.qte button:hover{color:var(--text);border-color:var(--border2)}
+.qte span{font-family:var(--font-mono);font-size:0.7rem;min-width:1.4rem;text-align:center;color:var(--text-mid)}
+.sup{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:1rem;line-height:1;
+     padding:0.2rem 0.3rem;flex-shrink:0}
+.sup:hover{color:var(--danger)}
+
+/* ── Recettes : le tirage ───────────────────────────────────────────────── */
+.tirage{background:linear-gradient(160deg,var(--surface2),var(--surface));border:1px solid var(--border);
+        border-radius:12px;padding:1rem;margin-bottom:0.8rem;text-align:center}
+.tirage-btn{font-family:var(--font-mono);font-size:0.78rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;
+            background:var(--accent);color:#1a0f07;border:none;border-radius:9px;padding:0.9rem 1.4rem;width:100%;
+            cursor:pointer;transition:filter 0.13s}
+.tirage-btn:hover{filter:brightness(1.08)}
+.tirage-btn:disabled{filter:grayscale(0.5);cursor:wait}
+.tirage-sec{display:flex;gap:0.45rem;margin-top:0.55rem;justify-content:center;flex-wrap:wrap}
+.sortie{margin-top:0.85rem;padding-top:0.85rem;border-top:1px dashed var(--border2);display:none}
+.sortie.on{display:block}
+.sortie-nom{font-size:1.5rem;font-weight:800;line-height:1.25;letter-spacing:-0.01em}
+.sortie.roule .sortie-nom{color:var(--text-mid);filter:blur(0.4px)}
+.sortie-meta{font-family:var(--font-mono);font-size:0.55rem;letter-spacing:0.12em;color:var(--text-dim);
+             margin-top:0.4rem;text-transform:uppercase}
+.sortie-act{display:flex;gap:0.4rem;margin-top:0.8rem;justify-content:center;flex-wrap:wrap}
+
+/* ── Recettes : menu de la semaine ──────────────────────────────────────── */
+.menu-ligne{display:flex;align-items:center;gap:0.55rem;background:var(--surface);border:1px solid var(--border);
+            border-radius:8px;padding:0.5rem 0.6rem;margin-bottom:0.3rem}
+.menu-jour{font-family:var(--font-mono);font-size:0.52rem;letter-spacing:0.12em;color:var(--text-dim);
+           width:2.6rem;flex-shrink:0;text-transform:uppercase}
+.menu-nom{flex:1;min-width:0;font-size:0.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ── Recettes : la liste ────────────────────────────────────────────────── */
+.rec{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:0.6rem 0.7rem;margin-bottom:0.35rem}
+.rec-haut{display:flex;align-items:center;gap:0.5rem}
+.rec-nom{flex:1;min-width:0;font-size:0.95rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rec-bas{display:flex;align-items:center;gap:0.4rem;margin-top:0.35rem;flex-wrap:wrap}
+.tag{font-family:var(--font-mono);font-size:0.48rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-mid);
+     background:var(--surface3);border:1px solid var(--border);border-radius:99px;padding:0.12rem 0.4rem}
+.rec-stat{font-family:var(--font-mono);font-size:0.5rem;letter-spacing:0.08em;color:var(--text-dim);margin-left:auto}
+.filtres{display:flex;flex-wrap:wrap;gap:0.3rem;margin-bottom:0.6rem}
+.filtre{font-family:var(--font-mono);font-size:0.54rem;letter-spacing:0.1em;text-transform:uppercase;
+        background:none;border:1px solid var(--border);color:var(--text-dim);padding:0.28rem 0.6rem;
+        border-radius:99px;cursor:pointer}
+.filtre:hover{color:var(--text-mid)}
+.filtre.on{background:var(--accent);border-color:var(--accent);color:#1a0f07;font-weight:700}
+
+/* ── Modale ─────────────────────────────────────────────────────────────── */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.72);display:none;align-items:center;justify-content:center;
+          z-index:600;padding:1rem}
+.modal-bg.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:12px;width:100%;max-width:520px;
+       max-height:88vh;overflow-y:auto;padding:1rem}
+.modal h2{font-family:var(--font-mono);font-size:0.62rem;letter-spacing:0.18em;text-transform:uppercase;
+          color:var(--accent);margin-bottom:0.8rem}
+.champ{margin-bottom:0.6rem}
+.champ label{display:block;font-family:var(--font-mono);font-size:0.5rem;letter-spacing:0.14em;text-transform:uppercase;
+             color:var(--text-dim);margin-bottom:0.25rem}
+.duo{display:flex;gap:0.5rem}
+.duo>*{flex:1}
+.modal-act{display:flex;gap:0.4rem;justify-content:flex-end;margin-top:0.9rem}
+.modal-act .gauche{margin-right:auto}
+
+/* ── Toast ──────────────────────────────────────────────────────────────── */
+#toasts{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(1rem + env(safe-area-inset-bottom));
+        z-index:900;display:flex;flex-direction:column;gap:0.35rem;align-items:center;pointer-events:none;width:max-content;max-width:92vw}
+.toast{background:var(--surface3);border:1px solid var(--border2);border-left:3px solid var(--accent);
+       color:var(--text);font-size:0.82rem;padding:0.55rem 0.85rem;border-radius:7px;pointer-events:auto;
+       box-shadow:0 8px 24px rgba(0,0,0,0.5);animation:toastIn 0.18s ease-out}
+.toast.ok{border-left-color:var(--green)}
+.toast.err{border-left-color:var(--danger)}
+.toast button{background:none;border:none;color:var(--accent);font-family:var(--font-mono);font-size:0.55rem;
+              letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;margin-left:0.6rem;padding:0}
+@keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+<header>
+  <span class="logo">RECETTE</span>
+  <span class="nav-sep"></span>
+  <nav class="nav-tabs">
+    <button class="nav-tab active" data-page="courses">Courses</button>
+    <button class="nav-tab" data-page="recettes">Recettes</button>
+  </nav>
+  <span class="hspace"></span>
+  <button class="hbtn" id="btnMenu" title="Sauvegarde et remise à zéro">···</button>
+  <button class="hbtn" id="btnVersion" title="Vérifier la mise à jour">v0.0.0</button>
+</header>
+
+<main>
+  <!-- ── LISTE DE COURSES ──────────────────────────────────────────────── -->
+  <section class="page active" id="pageCourses">
+    <div class="bloc">
+      <form class="ajout" id="formAjout" autocomplete="off">
+        <label class="sr-only" for="chAjout">Article à ajouter</label>
+        <input id="chAjout" placeholder="Ajouter un article…" list="listeConnus" enterkeyhint="done">
+        <datalist id="listeConnus"></datalist>
+        <label class="sr-only" for="chRayon">Rayon</label>
+        <select id="chRayon"></select>
+        <button class="btn primaire" type="submit">Ajouter</button>
+      </form>
+    </div>
+
+    <div class="bloc" id="blocHebdo">
+      <div class="bloc-titre">Courses de la semaine <span class="cpt" id="cptHebdo"></span>
+        <span class="fin"><button class="btn" id="btnToutHebdo">Tout prendre</button>
+        <button class="btn" id="btnGererHebdo">Gérer</button></span></div>
+      <div class="puces" id="puceHebdo"></div>
+    </div>
+
+    <div class="bloc" id="blocQuotidien">
+      <div class="bloc-titre">Le quotidien — restock
+        <span class="fin"><button class="btn" id="btnGererQuot">Gérer</button></span></div>
+      <div class="puces" id="puceQuot"></div>
+    </div>
+
+    <div class="bloc">
+      <div class="bloc-titre">La liste <span class="cpt" id="cptListe"></span>
+        <span class="fin"><button class="btn" id="btnViderCoches">Vider les cochés</button></span></div>
+      <div id="listeCourses"></div>
+    </div>
+  </section>
+
+  <!-- ── RECETTES ──────────────────────────────────────────────────────── -->
+  <section class="page" id="pageRecettes">
+    <div class="tirage">
+      <button class="tirage-btn" id="btnTirer">Tirer une recette</button>
+      <div class="tirage-sec">
+        <button class="btn" id="btnMenu5">Menu de la semaine</button>
+        <button class="btn" id="btnNouvelleRecette">+ Recette</button>
+      </div>
+      <div class="sortie" id="sortie">
+        <div class="sortie-nom" id="sortieNom"></div>
+        <div class="sortie-meta" id="sortieMeta"></div>
+        <div class="sortie-act" id="sortieAct">
+          <button class="btn" id="btnRelancer">Relancer</button>
+          <button class="btn" id="btnCourses">Aux courses</button>
+          <button class="btn primaire" id="btnFaite">Je la fais</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="bloc" id="blocMenu" style="display:none">
+      <div class="bloc-titre">Menu de la semaine
+        <span class="fin"><button class="btn" id="btnMenuCourses">Tout aux courses</button>
+        <button class="btn" id="btnMenuFermer">Fermer</button></span></div>
+      <div id="listeMenu"></div>
+    </div>
+
+    <div class="bloc">
+      <div class="bloc-titre">Le répertoire <span class="cpt" id="cptRecettes"></span></div>
+      <div class="filtres" id="filtres"></div>
+      <div id="listeRecettes"></div>
+    </div>
+  </section>
+</main>
+
+<div class="modal-bg" id="modalBg"><div class="modal" id="modal"></div></div>
+<div id="toasts"></div>
+
+<script>
+'use strict';
+// ═══════════════════════════════════════════════════════════════════════════
+//  RECETTE APP — deux besoins, une seule page.
+//
+//  1. La liste de courses : ce qu'on coche en magasin. Elle est alimentée à la
+//     main, par les récurrents de la semaine, par les articles du quotidien
+//     qu'on rachète au coup par coup, et par les ingrédients d'une recette.
+//  2. Le tirage : on ouvre le frigo sans idée, l'app en propose une — et elle
+//     évite celles qu'on vient de faire, parce que le but est de VARIER.
+//
+//  Même base technique que le kanban : une page, du JavaScript nu, aucune
+//  dépendance, aucun appel sortant, un service worker pour l'installation et
+//  le hors-ligne. Une différence assumée : tout vit dans localStorage, il n'y
+//  a pas de classeur distant. D'où la sauvegarde JSON du menu « ··· », qui est
+//  ici le seul filet contre un navigateur qu'on vide.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const APP_VERSION='v1.0.0';
+
+// ── Outils ────────────────────────────────────────────────────────────────
+const $=s=>document.querySelector(s);
+const $$=s=>[...document.querySelectorAll(s)];
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const jour=d=>{const x=d||new Date();return new Date(x.getTime()-x.getTimezoneOffset()*6e4).toISOString().slice(0,10);};
+const joursDepuis=iso=>{
+  if(!iso)return null;
+  const t=Date.parse(iso+'T00:00:00');
+  if(!Number.isFinite(t))return null;
+  return Math.floor((Date.parse(jour()+'T00:00:00')-t)/864e5);
+};
+// « Œufs », « oeufs » et « OEUFS  » sont le même article : on compare des
+// formes normalisées, jamais les libellés bruts. Sans ça la liste accumule
+// trois fois le même produit et on repart avec trois paquets de pâtes.
+const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+                 .toLowerCase().replace(/\s+/g,' ').trim();
+// Le tirage passe par une indirection : une épreuve peut poser sa propre
+// source d'aléa et vérifier ce que l'algorithme choisit, ce qui serait
+// impossible avec Math.random appelé en dur.
+let alea=()=>Math.random();
+
+// ── Les rayons ────────────────────────────────────────────────────────────
+// L'ordre est celui d'un magasin, pas l'alphabet : la liste se lit en marchant.
+const RAYONS=[
+  ['legumes','Fruits & légumes','--r-legumes'],
+  ['frais','Frais & crèmerie','--r-frais'],
+  ['viande','Viande & poisson','--r-viande'],
+  ['epicerie','Épicerie','--r-epicerie'],
+  ['surgele','Surgelés','--r-surgele'],
+  ['boisson','Boissons','--r-boisson'],
+  ['entretien','Entretien & maison','--r-entretien'],
+  ['autre','Autre','--r-autre']
+];
+const RAYON=Object.fromEntries(RAYONS.map(([k,l,c])=>[k,{lib:l,coul:`var(${c})`}]));
+const rayonOk=r=>RAYON[r]?r:'autre';
+const rayonLib=r=>RAYON[rayonOk(r)].lib;
+const rayonCoul=r=>RAYON[rayonOk(r)].coul;
+
+// ── Mémoire locale ────────────────────────────────────────────────────────
+// localStorage peut refuser d'écrire (mode privé, quota). On ne jette jamais :
+// l'app continue de fonctionner en mémoire vive, mais on le DIT une fois —
+// se taire ferait croire à une sauvegarde qui n'a pas eu lieu.
+const LS='recette_';
+let lsMuet=false;
+function lire(cle,defaut){
+  try{ const v=localStorage.getItem(LS+cle); return v==null?defaut:JSON.parse(v); }
+  catch(e){ return defaut; }
+}
+function ecrire(cle,val){
+  try{ localStorage.setItem(LS+cle,JSON.stringify(val)); return true; }
+  catch(e){
+    if(!lsMuet){ lsMuet=true; toast("Mémoire locale pleine ou bloquée — rien n'est sauvegardé",'err'); }
+    return false;
+  }
+}
+
+// ── Le fonds de départ ────────────────────────────────────────────────────
+// Une app de courses vide ne sert à rien : on ne va pas saisir quarante
+// produits avant de pouvoir faire sa première liste. Ces valeurs ne sont
+// posées qu'au tout premier lancement ; ensuite elles vivent leur vie.
+const SEMENCE_RECURRENTS=[
+  // Hebdo : les courses du samedi, proposées chaque semaine.
+  ['Pain','epicerie','hebdo'],['Œufs','frais','hebdo'],['Lait','frais','hebdo'],
+  ['Beurre','frais','hebdo'],['Yaourts','frais','hebdo'],['Fromage','frais','hebdo'],
+  ['Poulet','viande','hebdo'],['Salade','legumes','hebdo'],['Tomates','legumes','hebdo'],
+  ['Pommes','legumes','hebdo'],['Bananes','legumes','hebdo'],['Café','epicerie','hebdo'],
+  // Quotidien : ce qu'on rachète quand le placard est vide, pas au calendrier.
+  ['Papier toilette','entretien','quotidien'],['Liquide vaisselle','entretien','quotidien'],
+  ['Lessive','entretien','quotidien'],['Éponges','entretien','quotidien'],
+  ['Sacs poubelle','entretien','quotidien'],['Huile d\'olive','epicerie','quotidien'],
+  ['Sel','epicerie','quotidien'],['Poivre','epicerie','quotidien'],['Sucre','epicerie','quotidien'],
+  ['Farine','epicerie','quotidien'],['Riz','epicerie','quotidien'],['Pâtes','epicerie','quotidien'],
+  ['Dentifrice','entretien','quotidien'],['Eau pétillante','boisson','quotidien']
+];
+const SEMENCE_RECETTES=[
+  ['Pâtes carbonara',['rapide','pâtes'],20,['Spaghetti|epicerie','Lardons|viande','Œufs|frais','Parmesan|frais']],
+  ['Poulet rôti & pommes de terre',['four','classique'],75,['Poulet entier|viande','Pommes de terre|legumes','Thym|legumes','Beurre|frais']],
+  ['Curry de pois chiches',['végé','rapide'],30,['Pois chiches|epicerie','Lait de coco|epicerie','Oignon|legumes','Curry|epicerie','Épinards|legumes']],
+  ['Ratatouille',['végé','mijoté'],50,['Courgettes|legumes','Aubergine|legumes','Poivrons|legumes','Tomates|legumes','Oignon|legumes']],
+  ['Saumon au four & riz',['poisson','rapide'],25,['Pavés de saumon|viande','Riz|epicerie','Citron|legumes','Brocoli|legumes']],
+  ['Chili sin carne',['végé','mijoté'],45,['Haricots rouges|epicerie','Tomates concassées|epicerie','Maïs|epicerie','Oignon|legumes','Cumin|epicerie']],
+  ['Omelette aux champignons',['rapide','végé'],15,['Œufs|frais','Champignons|legumes','Persil|legumes','Beurre|frais']],
+  ['Risotto aux champignons',['végé','mijoté'],40,['Riz arborio|epicerie','Champignons|legumes','Bouillon|epicerie','Parmesan|frais','Vin blanc|boisson']],
+  ['Tartiflette',['four','hiver'],60,['Pommes de terre|legumes','Reblochon|frais','Lardons|viande','Oignon|legumes','Crème|frais']],
+  ['Soupe de légumes',['végé','hiver'],35,['Carottes|legumes','Poireaux|legumes','Pommes de terre|legumes','Bouillon|epicerie']],
+  ['Bœuf bourguignon',['mijoté','classique'],150,['Bœuf à braiser|viande','Vin rouge|boisson','Carottes|legumes','Champignons|legumes','Lardons|viande']],
+  ['Pizza maison',['four','partage'],45,['Pâte à pizza|frais','Coulis de tomates|epicerie','Mozzarella|frais','Origan|epicerie']],
+  ['Salade César',['rapide','froid'],20,['Salade|legumes','Poulet|viande','Parmesan|frais','Croûtons|epicerie']],
+  ['Quiche lorraine',['four','classique'],50,['Pâte brisée|frais','Lardons|viande','Œufs|frais','Crème|frais','Gruyère|frais']],
+  ['Wok de nouilles',['rapide','asiatique'],25,['Nouilles|epicerie','Légumes wok|surgele','Sauce soja|epicerie','Gingembre|legumes']],
+  ['Gratin dauphinois',['four','classique'],70,['Pommes de terre|legumes','Crème|frais','Lait|frais','Ail|legumes','Muscade|epicerie']],
+  ['Tacos maison',['rapide','partage'],30,['Tortillas|epicerie','Bœuf haché|viande','Cheddar|frais','Avocat|legumes','Citron vert|legumes']],
+  ['Dahl de lentilles',['végé','mijoté'],40,['Lentilles corail|epicerie','Lait de coco|epicerie','Tomates|legumes','Curcuma|epicerie','Oignon|legumes']],
+  ['Cabillaud & purée',['poisson','classique'],35,['Cabillaud|viande','Pommes de terre|legumes','Beurre|frais','Lait|frais']],
+  ['Burger maison',['partage','rapide'],30,['Pains burger|epicerie','Steak haché|viande','Cheddar|frais','Salade|legumes','Oignon|legumes']]
+];
+function semer(){
+  if(lire('seme',false))return;
+  if(!recurrents.length)
+    recurrents=SEMENCE_RECURRENTS.map(([nom,rayon,cadence])=>({id:uid(),nom,rayon,cadence,dernier:null}));
+  if(!recettes.length)
+    recettes=SEMENCE_RECETTES.map(([nom,tags,duree,ing])=>({
+      id:uid(),nom,tags,duree,
+      ingredients:ing.map(s=>{const [n,r]=s.split('|');return {nom:n,rayon:rayonOk(r)};}),
+      notes:'',dernier:null,faites:0
+    }));
+  ecrire('recurrents',recurrents); ecrire('recettes',recettes); ecrire('seme',true);
+}
+
+// ── L'état ────────────────────────────────────────────────────────────────
+let courses    = lire('courses',[]);
+let recurrents = lire('recurrents',[]);
+let recettes   = lire('recettes',[]);
+let histo      = lire('histo',[]);      // ids tirés, du plus récent au plus ancien
+let menu       = lire('menu',[]);       // le menu de la semaine, s'il est ouvert
+let filtreTag  = null;                  // volontairement non persisté : un filtre
+                                        // oublié d'hier ferait croire à un
+                                        // répertoire à moitié vide.
+const sauveCourses    = ()=>ecrire('courses',courses);
+const sauveRecurrents = ()=>ecrire('recurrents',recurrents);
+const sauveRecettes   = ()=>ecrire('recettes',recettes);
+const sauveHisto      = ()=>ecrire('histo',histo);
+const sauveMenu       = ()=>ecrire('menu',menu);
+
+// ── Toast ─────────────────────────────────────────────────────────────────
+function toast(msg,type,action){
+  const d=document.createElement('div');
+  d.className='toast'+(type?' '+type:'');
+  d.textContent=msg;
+  if(action){
+    const b=document.createElement('button');
+    b.textContent=action[0];
+    b.onclick=()=>{ d.remove(); action[1](); };
+    d.appendChild(b);
+  }
+  $('#toasts').appendChild(d);
+  setTimeout(()=>d.remove(),action?6000:2600);
+}
+
+// ── Modale ────────────────────────────────────────────────────────────────
+function ouvreModale(html,apres){
+  $('#modal').innerHTML=html;
+  $('#modalBg').classList.add('open');
+  if(apres)apres();
+  const p=$('#modal').querySelector('input,textarea,select');
+  if(p)setTimeout(()=>p.focus(),30);
+}
+function fermeModale(){ $('#modalBg').classList.remove('open'); $('#modal').innerHTML=''; }
+$('#modalBg').addEventListener('mousedown',e=>{ if(e.target===$('#modalBg'))fermeModale(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&$('#modalBg').classList.contains('open'))fermeModale(); });
+
+// ── Navigation ────────────────────────────────────────────────────────────
+let page=lire('page','courses');
+function vaVers(p){
+  page=(p==='recettes')?'recettes':'courses';
+  ecrire('page',page);
+  $$('.nav-tab').forEach(b=>b.classList.toggle('active',b.dataset.page===page));
+  $$('.page').forEach(s=>s.classList.toggle('active',s.id==='page'+page[0].toUpperCase()+page.slice(1)));
+  window.scrollTo(0,0);
+}
+$$('.nav-tab').forEach(b=>b.onclick=()=>vaVers(b.dataset.page));
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  LISTE DE COURSES
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Le rayon d'un article se devine : d'abord chez les récurrents, ensuite dans
+// les ingrédients des recettes. On ne demande donc jamais de le choisir, mais
+// on peut toujours corriger celui qui est proposé.
+function devineRayon(nom){
+  const n=norm(nom);
+  const r=recurrents.find(x=>norm(x.nom)===n);
+  if(r)return rayonOk(r.rayon);
+  for(const rec of recettes){
+    const i=(rec.ingredients||[]).find(x=>norm(x.nom)===n);
+    if(i)return rayonOk(i.rayon);
+  }
+  return 'autre';
+}
+const dansListe=nom=>courses.find(i=>norm(i.nom)===norm(nom));
+
+// Un seul chemin d'ajout pour toutes les sources — saisie libre, puce hebdo,
+// puce quotidien, ingrédients d'une recette. Il rend ce qu'il a fait, parce
+// que l'appelant veut parfois le dire (« 4 ajoutés, 2 déjà là »).
+function ajoute(nom,rayon,src){
+  nom=String(nom||'').trim();
+  if(!nom)return null;
+  const dejala=dansListe(nom);
+  if(dejala){
+    // Déjà coché : on le remet à prendre plutôt que d'en créer un doublon
+    // sous le premier, qu'on ne verrait pas en magasin.
+    if(dejala.coche){ dejala.coche=false; dejala.qte=1; marqueRecurrent(nom); return {etat:'repris',item:dejala}; }
+    dejala.qte=(dejala.qte|0)+1; marqueRecurrent(nom); return {etat:'incremente',item:dejala};
+  }
+  const item={id:uid(),nom,rayon:rayonOk(rayon||devineRayon(nom)),qte:1,coche:false,
+              src:src||'libre',le:jour()};
+  courses.push(item);
+  marqueRecurrent(nom);
+  return {etat:'ajoute',item};
+}
+// Prendre un récurrent, d'où que vienne le geste, remet son compteur à zéro :
+// c'est cette date qui décide s'il sera proposé la semaine prochaine.
+function marqueRecurrent(nom){
+  const r=recurrents.find(x=>norm(x.nom)===norm(nom));
+  if(r)r.dernier=jour();
+}
+// Un hebdo est « dû » s'il n'a jamais été pris, ou s'il l'a été il y a au
+// moins six jours — une semaine de courses n'arrive jamais pile à sept jours.
+const DELAI_HEBDO=6;
+const estDu=r=>{ const j=joursDepuis(r.dernier); return j===null||j>=DELAI_HEBDO; };
+
+function rendCourses(){
+  // Le catalogue de saisie : récurrents et ingrédients connus, sans doublon.
+  const connus=new Map();
+  recurrents.forEach(r=>connus.set(norm(r.nom),r.nom));
+  recettes.forEach(rec=>(rec.ingredients||[]).forEach(i=>{ if(!connus.has(norm(i.nom)))connus.set(norm(i.nom),i.nom); }));
+  $('#listeConnus').innerHTML=[...connus.values()].sort((a,b)=>a.localeCompare(b,'fr'))
+    .map(n=>`<option value="${esc(n)}">`).join('');
+
+  // Les hebdo : les dus d'abord, puis les autres, chacun avec son délai.
+  const hebdo=recurrents.filter(r=>r.cadence==='hebdo')
+    .sort((a,b)=>(estDu(b)-estDu(a))||a.nom.localeCompare(b.nom,'fr'));
+  const dus=hebdo.filter(r=>estDu(r)&&!dansListe(r.nom));
+  $('#cptHebdo').textContent=dus.length?`${dus.length} à reprendre`:'à jour';
+  $('#btnToutHebdo').disabled=!dus.length;
+  $('#puceHebdo').innerHTML=hebdo.length?hebdo.map(r=>{
+    const dedans=!!dansListe(r.nom), j=joursDepuis(r.dernier);
+    return `<button class="puce${estDu(r)&&!dedans?' due':''}${dedans?' dedans':''}" data-rec="${r.id}"
+      style="--rc:${rayonCoul(r.rayon)}"><span class="pt"></span>${esc(r.nom)}
+      <span class="jrs">${j===null?'jamais':j===0?"aujourd'hui":j+'j'}</span></button>`;
+  }).join(''):'<div class="vide">Aucun achat hebdomadaire — « Gérer » pour en ajouter.</div>';
+
+  // Le quotidien : pas de calendrier, on le reprend quand il manque.
+  const quot=recurrents.filter(r=>r.cadence==='quotidien')
+    .sort((a,b)=>a.nom.localeCompare(b.nom,'fr'));
+  $('#puceQuot').innerHTML=quot.length?quot.map(r=>{
+    const dedans=!!dansListe(r.nom);
+    return `<button class="puce${dedans?' dedans':''}" data-rec="${r.id}"
+      style="--rc:${rayonCoul(r.rayon)}"><span class="pt"></span>${esc(r.nom)}</button>`;
+  }).join(''):'<div class="vide">Rien au quotidien — « Gérer » pour en ajouter.</div>';
+
+  // La liste, groupée par rayon dans l'ordre du magasin.
+  const coches=courses.filter(i=>i.coche).length;
+  $('#cptListe').textContent=courses.length?`${coches}/${courses.length}`:'';
+  $('#btnViderCoches').disabled=!coches;
+  const html=RAYONS.map(([k,lib,coul])=>{
+    const items=courses.filter(i=>rayonOk(i.rayon)===k);
+    if(!items.length)return '';
+    // Les cochés descendent en bas de leur rayon : ce qui reste à prendre est
+    // toujours en haut, là où l'œil va.
+    items.sort((a,b)=>(a.coche-b.coche)||a.nom.localeCompare(b.nom,'fr'));
+    return `<div class="rayon"><div class="rayon-tit" style="--rc:var(${coul})">${esc(lib)}
+      <span style="color:var(--text-dim)">${items.filter(i=>!i.coche).length}</span></div>
+      ${items.map(i=>`
+      <div class="item${i.coche?' coche':''}" data-id="${i.id}">
+        <button class="case" data-act="coche" aria-label="Cocher ${esc(i.nom)}"></button>
+        <span class="item-nom">${esc(i.nom)}</span>
+        ${i.src==='recette'?'<span class="item-src">RECETTE</span>':''}
+        <span class="qte">
+          <button data-act="moins" aria-label="Moins">−</button>
+          <span>${i.qte|0}</span>
+          <button data-act="plus" aria-label="Plus">+</button>
+        </span>
+        <button class="sup" data-act="sup" aria-label="Supprimer ${esc(i.nom)}">✕</button>
+      </div>`).join('')}</div>`;
+  }).join('');
+  $('#listeCourses').innerHTML=html||'<div class="vide">Liste vide.<br>Ajoute un article, ou pioche dans les propositions ci-dessus.</div>';
+}
+
+// Un seul écouteur pour toute la liste : les lignes sont reconstruites à
+// chaque rendu, des écouteurs posés ligne par ligne fuiraient à chaque fois.
+$('#listeCourses').addEventListener('click',e=>{
+  const b=e.target.closest('[data-act]'); if(!b)return;
+  const l=b.closest('.item'); if(!l)return;
+  const it=courses.find(i=>i.id===l.dataset.id); if(!it)return;
+  const act=b.dataset.act;
+  if(act==='coche'){ it.coche=!it.coche; if(it.coche)marqueRecurrent(it.nom); }
+  else if(act==='plus') it.qte=(it.qte|0)+1;
+  else if(act==='moins'){ it.qte=(it.qte|0)-1; if(it.qte<1)courses=courses.filter(i=>i.id!==it.id); }
+  else if(act==='sup') courses=courses.filter(i=>i.id!==it.id);
+  sauveCourses(); rendCourses();
+});
+
+$('#formAjout').addEventListener('submit',e=>{
+  e.preventDefault();
+  const ch=$('#chAjout'), nom=ch.value.trim();
+  if(!nom)return;
+  const r=ajoute(nom,$('#chRayon').value||null,'libre');
+  sauveCourses();
+  ch.value=''; $('#chRayon').value='';
+  rendCourses(); ch.focus();
+  if(r&&r.etat==='incremente')toast(`${r.item.nom} — déjà dans la liste, quantité ${r.item.qte}`);
+  if(r&&r.etat==='repris')toast(`${r.item.nom} — remis à prendre`);
+});
+
+// Les puces : hebdo et quotidien partagent le même geste, un appui = un ajout.
+function clicPuce(e){
+  const b=e.target.closest('[data-rec]'); if(!b)return;
+  const r=recurrents.find(x=>x.id===b.dataset.rec); if(!r)return;
+  const dejala=dansListe(r.nom);
+  if(dejala&&!dejala.coche){
+    // Deuxième appui sur une puce déjà prise : on retire, plutôt que
+    // d'empiler des quantités qu'on n'a pas demandées.
+    courses=courses.filter(i=>i.id!==dejala.id);
+    sauveCourses(); rendCourses(); toast(`${r.nom} retiré de la liste`);
+    return;
+  }
+  ajoute(r.nom,r.rayon,r.cadence);
+  sauveCourses(); sauveRecurrents(); rendCourses();
+}
+$('#puceHebdo').addEventListener('click',clicPuce);
+$('#puceQuot').addEventListener('click',clicPuce);
+
+$('#btnToutHebdo').onclick=()=>{
+  const dus=recurrents.filter(r=>r.cadence==='hebdo'&&estDu(r)&&!dansListe(r.nom));
+  if(!dus.length){ toast('Rien à reprendre cette semaine'); return; }
+  dus.forEach(r=>ajoute(r.nom,r.rayon,'hebdo'));
+  sauveCourses(); sauveRecurrents(); rendCourses();
+  toast(`${dus.length} article${dus.length>1?'s':''} ajouté${dus.length>1?'s':''}`,'ok');
+};
+
+$('#btnViderCoches').onclick=()=>{
+  const partis=courses.filter(i=>i.coche);
+  if(!partis.length)return;
+  courses=courses.filter(i=>!i.coche);
+  sauveCourses(); rendCourses();
+  // Vider est irréversible et se fait souvent d'un pouce distrait : on laisse
+  // six secondes pour revenir en arrière.
+  toast(`${partis.length} article${partis.length>1?'s':''} retiré${partis.length>1?'s':''}`,'ok',
+    ['Annuler',()=>{ courses=courses.concat(partis); sauveCourses(); rendCourses(); }]);
+};
+
+// ── Gérer les récurrents ──────────────────────────────────────────────────
+function gereRecurrents(cadence){
+  const titre=cadence==='hebdo'?'Achats hebdomadaires':'Articles du quotidien';
+  const dessine=()=>{
+    const liste=recurrents.filter(r=>r.cadence===cadence).sort((a,b)=>a.nom.localeCompare(b.nom,'fr'));
+    $('#gerListe').innerHTML=liste.length?liste.map(r=>`
+      <div class="item" data-id="${r.id}">
+        <span class="pt" style="width:8px;height:8px;border-radius:50%;background:${rayonCoul(r.rayon)};flex-shrink:0"></span>
+        <span class="item-nom">${esc(r.nom)}</span>
+        <span class="item-src">${esc(rayonLib(r.rayon).toUpperCase())}</span>
+        <button class="sup" data-sup="${r.id}" aria-label="Supprimer ${esc(r.nom)}">✕</button>
+      </div>`).join(''):'<div class="vide">Aucun article.</div>';
+  };
+  ouvreModale(`
+    <h2>${titre}</h2>
+    <form id="gerForm" class="duo" style="margin-bottom:0.7rem" autocomplete="off">
+      <input id="gerNom" placeholder="Nom de l'article">
+      <select id="gerRayon">${RAYONS.map(([k,l])=>`<option value="${k}">${esc(l)}</option>`).join('')}</select>
+      <button class="btn primaire" type="submit" style="flex:0 0 auto">+</button>
+    </form>
+    <div id="gerListe"></div>
+    <div class="modal-act"><button class="btn" id="gerFerme">Fermer</button></div>`,()=>{
+    dessine();
+    $('#gerForm').onsubmit=e=>{
+      e.preventDefault();
+      const nom=$('#gerNom').value.trim(); if(!nom)return;
+      if(recurrents.some(r=>norm(r.nom)===norm(nom))){ toast('Déjà dans la liste','err'); return; }
+      recurrents.push({id:uid(),nom,rayon:$('#gerRayon').value,cadence,dernier:null});
+      sauveRecurrents(); dessine(); rendCourses();
+      $('#gerNom').value=''; $('#gerNom').focus();
+    };
+    $('#gerListe').onclick=e=>{
+      const b=e.target.closest('[data-sup]'); if(!b)return;
+      recurrents=recurrents.filter(r=>r.id!==b.dataset.sup);
+      sauveRecurrents(); dessine(); rendCourses();
+    };
+    $('#gerFerme').onclick=fermeModale;
+  });
+}
+$('#btnGererHebdo').onclick=()=>gereRecurrents('hebdo');
+$('#btnGererQuot').onclick=()=>gereRecurrents('quotidien');
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  RECETTES ET TIRAGE
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── Le tirage ─────────────────────────────────────────────────────────────
+// Un tirage uniforme ne varie pas les repas : il redonne les pâtes trois fois
+// en dix jours, et c'est exactement ce qu'on cherchait à éviter. Deux règles :
+//   1. les dernières tirées sont écartées tant qu'il reste assez de candidates
+//      (écarter la moitié du répertoire au maximum, sinon un petit répertoire
+//      n'aurait plus rien à proposer) ;
+//   2. parmi celles qui restent, plus une recette est ancienne, plus elle est
+//      lourde — jamais nulle, pour qu'aucune ne disparaisse du répertoire.
+const MEMOIRE_TIRAGE=6;
+function poids(r){
+  const j=joursDepuis(r.dernier);
+  if(j===null)return 12;                    // jamais faite : elle passe devant
+  return 1+Math.min(j,60)/5;                // 1 aujourd'hui → 13 après deux mois
+}
+function candidates(tags,exclus){
+  let l=recettes.filter(r=>!tags||!tags.length||(r.tags||[]).some(t=>tags.includes(t)));
+  const ex=new Set(exclus||[]);
+  const recents=histo.slice(0,Math.min(MEMOIRE_TIRAGE,Math.max(0,Math.floor(l.length/2))));
+  const large=l.filter(r=>!ex.has(r.id));
+  const serre=large.filter(r=>!recents.includes(r.id));
+  return serre.length?serre:large;          // jamais rendre une liste vide s'il
+                                            // reste quoi que ce soit à tirer
+}
+function tire(tags,exclus){
+  const c=candidates(tags,exclus);
+  if(!c.length)return null;
+  const total=c.reduce((s,r)=>s+poids(r),0);
+  let x=alea()*total;
+  for(const r of c){ x-=poids(r); if(x<=0)return r; }
+  return c[c.length-1];                     // filet contre les arrondis flottants
+}
+
+let sortieId=null, roulement=null;
+function montreSortie(rec,anime){
+  sortieId=rec?rec.id:null;
+  const s=$('#sortie');
+  if(!rec){ s.classList.remove('on'); return; }
+  s.classList.add('on');
+  const pose=()=>{
+    const j=joursDepuis(rec.dernier);
+    $('#sortieNom').textContent=rec.nom;
+    $('#sortieMeta').textContent=[
+      rec.duree?rec.duree+' min':'',
+      (rec.tags||[]).join(' · '),
+      j===null?'jamais faite':j===0?"faite aujourd'hui":`il y a ${j} j`
+    ].filter(Boolean).join('  —  ');
+  };
+  if(!anime){ pose(); return; }
+  // Le défilé n'est pas décoratif : il montre que le tirage pioche dans tout
+  // le répertoire, et laisse une seconde avant de découvrir le résultat.
+  clearInterval(roulement);
+  s.classList.add('roule');
+  $('#sortieMeta').textContent='…';
+  const pool=recettes.length?recettes:[rec];
+  let n=0;
+  roulement=setInterval(()=>{
+    $('#sortieNom').textContent=pool[Math.floor(alea()*pool.length)].nom;
+    if(++n>=10){ clearInterval(roulement); roulement=null; s.classList.remove('roule'); pose(); }
+  },55);
+}
+function noteTirage(id){
+  histo=[id,...histo.filter(x=>x!==id)].slice(0,40);
+  sauveHisto();
+}
+function tirer(anime){
+  if(!recettes.length){ toast('Aucune recette au répertoire','err'); return; }
+  const r=tire(filtreTag?[filtreTag]:null,null);
+  if(!r){ toast('Aucune recette pour ce filtre','err'); return; }
+  noteTirage(r.id);
+  montreSortie(r,anime!==false);
+  rendRecettes();
+}
+$('#btnTirer').onclick=()=>tirer(true);
+$('#btnRelancer').onclick=()=>tirer(true);
+
+// « Je la fais » : c'est cette date qui fera reculer la recette dans les
+// tirages suivants. Sans elle, le poids ne bougerait jamais.
+$('#btnFaite').onclick=()=>{
+  const r=recettes.find(x=>x.id===sortieId); if(!r)return;
+  r.dernier=jour(); r.faites=(r.faites|0)+1;
+  sauveRecettes(); montreSortie(r,false); rendRecettes();
+  toast(`${r.nom} — notée comme faite`,'ok');
+};
+$('#btnCourses').onclick=()=>{
+  const r=recettes.find(x=>x.id===sortieId); if(!r)return;
+  versCourses([r]);
+};
+
+// ── Des ingrédients vers la liste ─────────────────────────────────────────
+// Ce qui est déjà dans la liste n'est pas dupliqué : on le dit, sans rien
+// écraser — la quantité que l'on avait posée à la main est respectée.
+function versCourses(recs){
+  let ajoutes=0, deja=0;
+  recs.forEach(r=>(r.ingredients||[]).forEach(i=>{
+    if(dansListe(i.nom)){ deja++; return; }
+    ajoute(i.nom,i.rayon,'recette'); ajoutes++;
+  }));
+  sauveCourses(); sauveRecurrents(); rendCourses();
+  if(!ajoutes&&!deja){ toast('Cette recette n\'a aucun ingrédient','err'); return; }
+  toast(`${ajoutes} ingrédient${ajoutes>1?'s':''} ajouté${ajoutes>1?'s':''}${deja?` — ${deja} déjà dans la liste`:''}`,'ok',
+        ['Voir la liste',()=>vaVers('courses')]);
+}
+
+// ── Le menu de la semaine ─────────────────────────────────────────────────
+// Cinq repas distincts, tirés d'un coup : c'est le geste du dimanche soir, et
+// il donne une liste de courses complète en deux appuis.
+const JOURS=['Lun','Mar','Mer','Jeu','Ven'];
+function tireMenu(){
+  if(!recettes.length){ toast('Aucune recette au répertoire','err'); return; }
+  const pris=[];
+  for(let i=0;i<JOURS.length;i++){
+    const r=tire(filtreTag?[filtreTag]:null,pris);
+    if(!r)break;                 // répertoire plus court que la semaine : on
+    pris.push(r.id);             // s'arrête là plutôt que de répéter un plat
+  }
+  menu=pris; sauveMenu(); rendMenu();
+  if(pris.length<JOURS.length)
+    toast(`${pris.length} repas seulement — le répertoire est court`,'info');
+}
+function rendMenu(){
+  const b=$('#blocMenu');
+  if(!menu.length){ b.style.display='none'; return; }
+  b.style.display='';
+  $('#listeMenu').innerHTML=menu.map((id,n)=>{
+    const r=recettes.find(x=>x.id===id);
+    if(!r)return '';
+    return `<div class="menu-ligne">
+      <span class="menu-jour">${JOURS[n]||'+'}</span>
+      <span class="menu-nom">${esc(r.nom)}</span>
+      <button class="btn" data-relance="${n}">↻</button>
+      <button class="sup" data-ote="${n}" aria-label="Retirer">✕</button>
+    </div>`;
+  }).join('');
+}
+$('#listeMenu').addEventListener('click',e=>{
+  const rel=e.target.closest('[data-relance]'), ote=e.target.closest('[data-ote]');
+  if(rel){
+    const n=+rel.dataset.relance;
+    // On exclut les autres cases du menu, pas celle qu'on relance : sinon le
+    // seul plat qu'on voulait changer resterait candidat contre lui-même.
+    const r=tire(filtreTag?[filtreTag]:null,menu.filter((_,i)=>i!==n));
+    if(!r){ toast('Plus rien à proposer','err'); return; }
+    menu[n]=r.id; sauveMenu(); rendMenu();
+  }else if(ote){
+    menu.splice(+ote.dataset.ote,1); sauveMenu(); rendMenu();
+  }
+});
+$('#btnMenu5').onclick=tireMenu;
+$('#btnMenuFermer').onclick=()=>{ menu=[]; sauveMenu(); rendMenu(); };
+$('#btnMenuCourses').onclick=()=>{
+  const recs=menu.map(id=>recettes.find(r=>r.id===id)).filter(Boolean);
+  if(recs.length)versCourses(recs);
+};
+
+// ── Le répertoire ─────────────────────────────────────────────────────────
+function tousLesTags(){
+  const m=new Map();
+  recettes.forEach(r=>(r.tags||[]).forEach(t=>m.set(t,(m.get(t)||0)+1)));
+  return [...m.entries()].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'fr'));
+}
+function rendRecettes(){
+  const tags=tousLesTags();
+  // Un filtre dont le tag a disparu (dernière recette qui le portait effacée)
+  // masquerait tout le répertoire en silence : on le lâche.
+  if(filtreTag&&!tags.some(([t])=>t===filtreTag))filtreTag=null;
+  $('#filtres').innerHTML=tags.length?
+    `<button class="filtre${filtreTag?'':' on'}" data-tag="">Tout</button>`+
+    tags.map(([t,n])=>`<button class="filtre${filtreTag===t?' on':''}" data-tag="${esc(t)}">${esc(t)} ${n}</button>`).join(''):'';
+  const liste=recettes.filter(r=>!filtreTag||(r.tags||[]).includes(filtreTag))
+    .sort((a,b)=>a.nom.localeCompare(b.nom,'fr'));
+  $('#cptRecettes').textContent=filtreTag?`${liste.length}/${recettes.length}`:String(recettes.length);
+  $('#listeRecettes').innerHTML=liste.length?liste.map(r=>{
+    const j=joursDepuis(r.dernier);
+    return `<div class="rec" data-id="${r.id}">
+      <div class="rec-haut">
+        <span class="rec-nom">${esc(r.nom)}</span>
+        <button class="btn" data-act="courses">Aux courses</button>
+        <button class="btn" data-act="edit">Modifier</button>
+      </div>
+      <div class="rec-bas">
+        ${(r.tags||[]).map(t=>`<span class="tag">${esc(t)}</span>`).join('')}
+        ${r.duree?`<span class="tag">${r.duree} min</span>`:''}
+        <span class="rec-stat">${j===null?'jamais faite':j===0?"aujourd'hui":`il y a ${j} j`}${r.faites?` · ${r.faites}×`:''}</span>
+      </div>
+    </div>`;
+  }).join(''):'<div class="vide">Aucune recette.<br>« + Recette » pour en écrire une.</div>';
+}
+$('#filtres').addEventListener('click',e=>{
+  const b=e.target.closest('[data-tag]'); if(!b)return;
+  filtreTag=b.dataset.tag||null; rendRecettes();
+});
+$('#listeRecettes').addEventListener('click',e=>{
+  const b=e.target.closest('[data-act]'); if(!b)return;
+  const r=recettes.find(x=>x.id===b.closest('.rec').dataset.id); if(!r)return;
+  if(b.dataset.act==='courses')versCourses([r]);
+  else editeRecette(r);
+});
+
+// ── Écrire une recette ────────────────────────────────────────────────────
+// Les ingrédients se saisissent en texte libre, un par ligne : c'est la façon
+// la plus rapide de recopier une recette, et le rayon se devine tout seul.
+// La forme « nom | rayon » reste possible pour corriger une devinette.
+function editeRecette(rec){
+  const nouvelle=!rec;
+  const r=rec||{id:uid(),nom:'',tags:[],duree:'',ingredients:[],notes:'',dernier:null,faites:0};
+  ouvreModale(`
+    <h2>${nouvelle?'Nouvelle recette':'Modifier'}</h2>
+    <div class="champ"><label for="reNom">Nom</label><input id="reNom" value="${esc(r.nom)}"></div>
+    <div class="duo">
+      <div class="champ" style="flex:2"><label for="reTags">Étiquettes (séparées par une virgule)</label>
+        <input id="reTags" value="${esc((r.tags||[]).join(', '))}" placeholder="rapide, végé"></div>
+      <div class="champ"><label for="reDuree">Durée (min)</label>
+        <input id="reDuree" type="text" inputmode="numeric" value="${esc(r.duree||'')}"></div>
+    </div>
+    <div class="champ"><label for="reIng">Ingrédients — un par ligne</label>
+      <textarea id="reIng" rows="7" placeholder="Tomates&#10;Mozzarella | frais">${esc((r.ingredients||[]).map(i=>i.nom+(i.rayon&&i.rayon!=='autre'?' | '+i.rayon:'')).join('\n'))}</textarea></div>
+    <div class="champ"><label for="reNotes">Notes</label><textarea id="reNotes" rows="2">${esc(r.notes||'')}</textarea></div>
+    <div class="modal-act">
+      ${nouvelle?'':'<button class="btn danger gauche" id="reSup">Supprimer</button>'}
+      <button class="btn" id="reAnnule">Annuler</button>
+      <button class="btn primaire" id="reOk">Enregistrer</button>
+    </div>`,()=>{
+    $('#reAnnule').onclick=fermeModale;
+    $('#reOk').onclick=()=>{
+      const nom=$('#reNom').value.trim();
+      if(!nom){ toast('Il faut au moins un nom','err'); $('#reNom').focus(); return; }
+      r.nom=nom;
+      r.tags=$('#reTags').value.split(',').map(t=>t.trim().toLowerCase()).filter(Boolean);
+      const d=parseInt($('#reDuree').value,10); r.duree=Number.isFinite(d)&&d>0?d:'';
+      r.ingredients=$('#reIng').value.split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{
+        const [n,ray]=l.split('|').map(x=>x.trim());
+        return {nom:n,rayon:ray?rayonOk(ray):devineRayon(n)};
+      });
+      r.notes=$('#reNotes').value.trim();
+      if(nouvelle)recettes.push(r);
+      sauveRecettes(); fermeModale(); rendRecettes(); rendCourses();
+      if(sortieId===r.id)montreSortie(r,false);
+      toast(nouvelle?'Recette ajoutée':'Recette modifiée','ok');
+    };
+    const sup=$('#reSup');
+    if(sup)sup.onclick=()=>{
+      const copie=r, place=recettes.indexOf(r);
+      recettes=recettes.filter(x=>x.id!==r.id);
+      menu=menu.filter(id=>id!==r.id); histo=histo.filter(id=>id!==r.id);
+      if(sortieId===r.id)montreSortie(null);
+      sauveRecettes(); sauveMenu(); sauveHisto();
+      fermeModale(); rendRecettes(); rendMenu();
+      toast('Recette supprimée','ok',['Annuler',()=>{
+        recettes.splice(place<0?recettes.length:place,0,copie);
+        sauveRecettes(); rendRecettes();
+      }]);
+    };
+  });
+}
+$('#btnNouvelleRecette').onclick=()=>editeRecette(null);
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  SAUVEGARDE — le seul filet, puisqu'il n'y a pas de serveur
+// ═══════════════════════════════════════════════════════════════════════════
+function paquet(){
+  return {app:'recette',version:APP_VERSION,le:new Date().toISOString(),
+          courses,recurrents,recettes,histo,menu};
+}
+function exporte(){
+  const a=document.createElement('a');
+  const b=new Blob([JSON.stringify(paquet(),null,1)],{type:'application/json'});
+  a.href=URL.createObjectURL(b);
+  a.download='recette-'+jour()+'.json';
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+}
+function importe(fichier){
+  const fr=new FileReader();
+  fr.onload=()=>{
+    let j; try{ j=JSON.parse(fr.result); }catch(e){ toast('Fichier illisible','err'); return; }
+    if(!j||typeof j!=='object'||!Array.isArray(j.recettes)){ toast("Ce n'est pas une sauvegarde Recette",'err'); return; }
+    courses=Array.isArray(j.courses)?j.courses:[];
+    recurrents=Array.isArray(j.recurrents)?j.recurrents:[];
+    recettes=j.recettes;
+    histo=Array.isArray(j.histo)?j.histo:[];
+    menu=Array.isArray(j.menu)?j.menu:[];
+    sauveCourses(); sauveRecurrents(); sauveRecettes(); sauveHisto(); sauveMenu(); ecrire('seme',true);
+    fermeModale(); montreSortie(null); rendTout();
+    toast('Sauvegarde restaurée','ok');
+  };
+  fr.readAsText(fichier);
+}
+$('#btnMenu').onclick=()=>ouvreModale(`
+  <h2>Sauvegarde</h2>
+  <p style="font-size:0.85rem;color:var(--text-mid);line-height:1.55;margin-bottom:0.8rem">
+    Tout est gardé dans ce navigateur, et nulle part ailleurs : vider les données du
+    site efface la liste et les recettes. Le fichier JSON est la seule copie.</p>
+  <div class="modal-act" style="justify-content:flex-start;flex-wrap:wrap">
+    <button class="btn" id="sgExp">Exporter</button>
+    <button class="btn" id="sgImp">Importer</button>
+    <input type="file" id="sgFic" accept="application/json,.json" class="sr-only">
+    <button class="btn danger" id="sgRaz">Tout effacer</button>
+    <button class="btn" id="sgFerme" style="margin-left:auto">Fermer</button>
+  </div>`,()=>{
+  $('#sgExp').onclick=exporte;
+  $('#sgImp').onclick=()=>$('#sgFic').click();
+  $('#sgFic').onchange=e=>{ if(e.target.files[0])importe(e.target.files[0]); };
+  $('#sgFerme').onclick=fermeModale;
+  $('#sgRaz').onclick=()=>{
+    // Effacer est définitif : on demande une deuxième fois, dans la modale,
+    // plutôt qu'avec un confirm() que le navigateur peut bloquer.
+    $('#sgRaz').outerHTML='<button class="btn danger" id="sgRaz2">Confirmer l\'effacement</button>';
+    $('#sgRaz2').onclick=()=>{
+      courses=[];recurrents=[];recettes=[];histo=[];menu=[];
+      try{ Object.keys(localStorage).filter(k=>k.startsWith(LS)).forEach(k=>localStorage.removeItem(k)); }catch(e){}
+      semer(); fermeModale(); montreSortie(null); rendTout();
+      toast('Tout a été remis à zéro','ok');
+    };
+  };
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  MISE À JOUR — reprise du kanban : recharger, purger, puis le DIRE
+// ═══════════════════════════════════════════════════════════════════════════
+// Le défaut qu'on évite ici a été constaté en vrai sur le kanban : un poste
+// est resté quarante versions en arrière, en silence, parce qu'un rechargement
+// ordinaire repasse par le service worker et le cache HTTP. Si l'un des deux
+// sert un vieux document, la version ne bouge pas, la sonde la redétecte, et
+// ça recommence sans que rien ne soit dit. Trois paliers, et on s'arrête.
+let swDernier=0, swEnCours=false, swAttente=0, swDit=false;
+const SW_ESSAIS='recetteMajEssais';
+const essais=v=>{ try{ const j=JSON.parse(sessionStorage.getItem(SW_ESSAIS)||'{}'); return j.v===v?(j.n|0):0; }catch(e){ return 0; } };
+const essaisPoser=(v,n)=>{ try{ sessionStorage.setItem(SW_ESSAIS,JSON.stringify({v,n})); }catch(e){} };
+const essaisRaz=()=>{ try{ sessionStorage.removeItem(SW_ESSAIS); }catch(e){} };
+// En `let` : une épreuve les remplace pour observer l'escalade sans quitter la page.
+let swRecharger=()=>location.reload();
+let swRemplacer=u=>location.replace(u);
+// On ne coupe jamais une saisie en cours — mais l'attendre sans fin revient à
+// ne jamais se mettre à jour : deux minutes, puis on le dit.
+const occupe=()=>$('#modalBg').classList.contains('open');
+function swMettreAJour(cible){
+  if(swEnCours)return;
+  const n=essais(cible);
+  if(n>=2){ swDire(cible); return; }
+  if(occupe()){
+    if(swAttente++<30){ setTimeout(()=>swMettreAJour(cible),4000); return; }
+    swDire(cible); return;
+  }
+  swAttente=0;
+  essaisPoser(cible,n+1);
+  if(n===0){ swEnCours=true; swRecharger(); return; }
+  // Hors ligne, purger le cache rendrait l'app incapable de se charger : on le
+  // dit plutôt que de la casser.
+  if(navigator.onLine){ swEnCours=true; videCache(); }
+  else swDire(cible);
+}
+function swDire(cible){
+  if(swDit)return; swDit=true;
+  toast(`Version ${cible} disponible, mais le cache sert une vieille page.`,'err',['Vider le cache',videCache]);
+}
+async function videCache(){
+  swEnCours=true;
+  try{ if('caches' in window){ const ks=await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))); } }catch(e){}
+  try{ if('serviceWorker' in navigator){ const rs=await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.map(r=>r.unregister())); } }catch(e){}
+  // URL différente à chaque fois : force une relecture réseau du document.
+  swRemplacer(location.pathname+'?v='+Date.now());
+}
+async function sonde(force){
+  if(!force&&Date.now()-swDernier<60000)return;
+  swDernier=Date.now();
+  try{
+    if('serviceWorker' in navigator){ const r=await navigator.serviceWorker.getRegistration(); if(r)r.update().catch(()=>{}); }
+  }catch(e){}
+  try{
+    const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'});
+    if(!r.ok)return;
+    const j=await r.json();
+    if(!j||!j.v)return;
+    // À jour : on efface la trace, sinon un incident ancien ferait escalader
+    // la prochaine mise à jour dès le premier essai.
+    if(j.v===APP_VERSION){ essaisRaz(); return; }
+    swMettreAJour(j.v);
+  }catch(e){}
+}
+$('#btnVersion').textContent=APP_VERSION;
+$('#btnVersion').onclick=()=>{
+  if(!navigator.onLine){ toast('Hors ligne — vérification impossible','err'); return; }
+  toast('Vérification…'); sonde(true);
+};
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    // controllerchange se déclenche AUSSI à la toute première prise en charge :
+    // sans ce garde, la première visite se rechargerait toute seule.
+    const avaitUnControleur=!!navigator.serviceWorker.controller;
+    navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(()=>{ swDernier=Date.now(); }).catch(()=>{});
+    navigator.serviceWorker.addEventListener('controllerchange',()=>{
+      if(avaitUnControleur&&!swEnCours&&!occupe()){ swEnCours=true; swRecharger(); }
+    });
+  });
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden)sonde(); });
+  window.addEventListener('focus',()=>sonde());
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+function rendTout(){ rendCourses(); rendRecettes(); rendMenu(); }
+function init(){
+  $('#chRayon').innerHTML='<option value="">Rayon auto</option>'+
+    RAYONS.map(([k,l])=>`<option value="${k}">${esc(l)}</option>`).join('');
+  semer();
+  // Un menu dont les recettes ont disparu afficherait des lignes vides.
+  menu=menu.filter(id=>recettes.some(r=>r.id===id));
+  vaVers(page);
+  rendTout();
+}
+init();
+</script>
+</body>
+</html>
