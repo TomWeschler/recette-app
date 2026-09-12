@@ -32,7 +32,7 @@
     {
       "name": "Ajouter un article",
       "short_name": "Ajouter",
-      "description": "Ouvrir la liste, champ d'ajout prêt, rayon « Autre »",
+      "description": "Ouvrir la liste avec le champ d'ajout prêt",
       "url": "./?ajout=",
       "icons": [
         {

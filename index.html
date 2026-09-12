@@ -310,13 +310,13 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
       <div class="col-liste">
         <div class="bloc">
           <div class="bloc-titre">La liste <span class="cpt" id="cptListe"></span>
-            <span class="fin"><button class="btn carre" id="btnPlus" title="Ajouter vite un article dans « Autre »"
+            <span class="fin"><button class="btn carre" id="btnPlus" title="Ajouter vite un article"
               aria-label="Ajouter vite un article">+</button>
             <button class="btn" id="btnViderCoches">Vider les cochés</button>
             <button class="btn primaire" id="btnCourseFaite">Course faite</button></span></div>
           <form class="eclair" id="formEclair" autocomplete="off" hidden>
-            <label class="sr-only" for="chEclair">Article à ajouter dans « Autre »</label>
-            <input id="chEclair" placeholder="Un article, puis Entrée — rayon « Autre »" enterkeyhint="done">
+            <label class="sr-only" for="chEclair">Article à ajouter</label>
+            <input id="chEclair" placeholder="Un article, puis Entrée — rayon deviné" list="listeConnus" enterkeyhint="done">
             <button class="btn primaire" type="submit">Ajouter</button>
             <button class="btn" type="button" id="btnEclairFin">Fini</button>
           </form>
@@ -421,7 +421,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 //  ici le seul filet contre un navigateur qu'on vide.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const APP_VERSION='v1.4.0';
+const APP_VERSION='v1.4.1';
 
 // ── Outils ────────────────────────────────────────────────────────────────
 const $=s=>document.querySelector(s);
@@ -844,9 +844,10 @@ $('#listePropos').addEventListener('click',e=>{
 // ── L'ajout éclair ────────────────────────────────────────────────────────
 // Le formulaire complet est en bas sur un téléphone, sous toute la liste : y
 // descendre pour un seul article qu'on vient de voir manquer était un voyage.
-// Ici, un « + » au-dessus de la liste ouvre un champ unique, sans rayon à
-// choisir — tout tombe dans « Autre », où l'on retrouve ce qu'on n'a pas
-// classé — et le champ reste ouvert : on enchaîne trois articles d'affilée.
+// Ici, un « + » au-dessus de la liste ouvre un champ unique : rien à choisir,
+// le rayon est deviné comme partout ailleurs — chez les récurrents puis dans
+// les ingrédients des recettes — et « Autre » n'est que le point de chute des
+// inconnus. Le champ reste ouvert : on enchaîne trois articles d'affilée.
 // C'est aussi ce qu'ouvre le raccourci de l'icône du téléphone.
 function ouvreEclair(){
   const f=$('#formEclair');
@@ -864,7 +865,7 @@ $('#formEclair').addEventListener('submit',e=>{
   e.preventDefault();
   const ch=$('#chEclair'), nom=ch.value.trim();
   if(!nom){ fermeEclair(); return; }
-  const r=ajoute(nom,'autre','eclair');
+  const r=ajoute(nom,null,'eclair');      // null : le rayon se devine
   sauveCourses(); sauveRecurrents();
   ch.value=''; rendCourses();
   // On garde le champ ouvert et vide : le geste suivant est presque toujours
@@ -887,9 +888,9 @@ function litIntention(){
   try{ history.replaceState(null,'',location.pathname); }catch(e){}
   vaVers('courses');
   if(texte){
-    ajoute(texte,'autre','eclair');
+    const r=ajoute(texte,null,'eclair');
     sauveCourses(); sauveRecurrents(); rendCourses();
-    toast(`${texte} — ajouté dans « Autre »`,'ok');
+    toast(`${texte} — ajouté dans « ${rayonLib(r&&r.item?r.item.rayon:'autre')} »`,'ok');
   }
   ouvreEclair();
 }

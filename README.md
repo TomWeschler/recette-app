@@ -32,8 +32,9 @@ téléphone, puis « Ajouter à l'écran d'accueil ».
   l'archive, elle, garde la course telle qu'elle a été. Chaque course classée
   se relit (« Voir ») et se reprend (« Reprendre » ajoute ce qui manque à la
   liste courante, sans rien remplacer). Les cinquante dernières sont gardées.
-- **Ajout éclair** : un « + » au-dessus de la liste ouvre un champ unique, sans
-  rayon à choisir — tout tombe dans « Autre » — et il reste ouvert, on enchaîne.
+- **Ajout éclair** : un « + » au-dessus de la liste ouvre un champ unique, rien
+  à choisir — le rayon se devine comme partout ailleurs, « Autre » n'étant que
+  le point de chute des inconnus — et il reste ouvert, on enchaîne.
   Le **raccourci de l'icône du téléphone** (appui long sur l'app → « Ajouter »)
   ouvre directement ce champ ; `./?ajout=Bougies` ajoute l'article tel quel,
   puis nettoie l'URL pour qu'un rafraîchissement ne le rejoue pas.

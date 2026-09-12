@@ -455,12 +455,17 @@ const deux=await p.evaluate(()=>({
   ouvert:!document.getElementById('formEclair').hidden,
   champ:document.getElementById('chEclair').value,
   focus:document.activeElement.id}));
-chk('Entrée ajoute, toujours dans « Autre »',
-    deux.n===2&&deux.rayons.every(r=>r==='autre'),JSON.stringify(deux));
-chk('…même pour un article que l\'app saurait classer',
-    (await p.evaluate(()=>{ document.getElementById('chEclair').value='Poulet';
-      document.getElementById('formEclair').dispatchEvent(new Event('submit',{cancelable:true}));
-      return courses.find(i=>i.nom==='Poulet').rayon==='autre'; })),'Poulet');
+chk('Entrée ajoute l\'article',deux.n===2,JSON.stringify(deux));
+chk('…un inconnu tombe dans « Autre »',
+    deux.rayons.every(r=>r==='autre'),JSON.stringify(deux));
+const devine=await p.evaluate(()=>{
+  const pose=nom=>{ document.getElementById('chEclair').value=nom;
+    document.getElementById('formEclair').dispatchEvent(new Event('submit',{cancelable:true}));
+    return courses.find(i=>i.nom===nom).rayon; };
+  return {recurrent:pose('Poulet'),ingredient:pose('Mozzarella')};
+});
+chk('…mais un article connu part dans son rayon',
+    devine.recurrent==='viande'&&devine.ingredient==='frais',JSON.stringify(devine));
 chk('…et le champ reste ouvert et vide pour le suivant',
     deux.ouvert&&deux.champ===''&&deux.focus==='chEclair',JSON.stringify(deux));
 
@@ -500,8 +505,15 @@ await p.goto(BASE+'?ajout=Sacs%20cong%C3%A9lation',{waitUntil:'domcontentloaded'
 await p.waitForFunction(()=>typeof litIntention==='function');
 const avecTexte=await p.evaluate(()=>({n:courses.length,
   nom:courses[0]&&courses[0].nom,rayon:courses[0]&&courses[0].rayon,url:location.search}));
-chk('Un texte dans l\'URL est ajouté dans « Autre »',
+chk('Un texte dans l\'URL est ajouté, rayon deviné',
     avecTexte.n===1&&avecTexte.nom==='Sacs congélation'&&avecTexte.rayon==='autre',JSON.stringify(avecTexte));
+// Le raccourci passe par le même chemin : un article connu y est classé aussi.
+await p.evaluate(()=>{ courses=[]; sauveCourses(); });
+await p.goto(BASE+'?ajout=Yaourts',{waitUntil:'domcontentloaded'});
+await p.waitForFunction(()=>typeof litIntention==='function');
+chk('…et le raccourci devine lui aussi',
+    await p.evaluate(()=>courses[0]&&courses[0].rayon==='frais'),
+    await p.evaluate(()=>JSON.stringify(courses[0]||null)));
 // Le nettoyage de l'URL n'est pas cosmétique : c'est ce qui empêche un
 // rafraîchissement de rejouer l'ajout.
 await p.reload({waitUntil:'domcontentloaded'});
